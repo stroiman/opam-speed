@@ -1,5 +1,6 @@
 open Speed.Domain
 open Speed.Runner
+open Speed.Assertions
 
 exception TestError
 
@@ -7,13 +8,13 @@ let passing_test () = ()
 let failing_test () = raise TestError
 
 let () =
-  let expected_success =
+  let first_result =
     { examples = [ { name = "Passing example"; f = passing_test } ] }
     |> run |> is_success
   in
-  Printf.printf "First run: %b\n" expected_success;
-  let expected_failure =
+  expect first_result be_true;
+  let second_result =
     { examples = [ { name = "Failing example"; f = failing_test } ] }
     |> run |> is_success
   in
-  Printf.printf "Second run: %b\n" expected_failure
+  expect second_result be_false
