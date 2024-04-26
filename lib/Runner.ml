@@ -1,0 +1,1 @@
+let run test = test ()
