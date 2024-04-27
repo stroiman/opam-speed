@@ -1,0 +1,6 @@
+profile=janestreet
+break-colon=before
+break-separators=after
+dock-collection-brackets
+break-collection-expressions=fit-or-vertical
+field-space=tight
