@@ -1,6 +1,11 @@
 open Domain
 
-type test_result = { success: bool }
+type test_result = {
+  success: bool;
+  no_of_failing_examples: int;
+}
+
+let empty = { success= true; no_of_failing_examples= 0 }
 
 let unwind ?on_error ?on_success ~(protect : 'a -> unit) f x =
   try
@@ -19,33 +24,38 @@ let unwind ?on_error ?on_success ~(protect : 'a -> unit) f x =
     raise e
 ;;
 
-let run_example fmt example =
-  Format.fprintf fmt "@[<v2>%s@," example.name;
-  unwind
-    ~on_error:(fun _ -> Format.pp_print_string fmt "Failure")
-    ~on_success:(fun _ -> Format.pp_print_string fmt "Success")
-    ~protect:(fun _ -> Format.fprintf fmt "@]@,")
-    example.f
-    ()
+let run_example fmt ctx example =
+  let result =
+    try
+      example.f ();
+      Format.fprintf fmt "@[<v2>@{<green>✔@} %s" example.name;
+      ctx
+    with
+    | _ ->
+      Format.fprintf fmt "@[<v2>@{<red>✘@} %s" example.name;
+      { success= false; no_of_failing_examples= ctx.no_of_failing_examples + 1 }
+  in
+  Format.fprintf fmt "@]@,";
+  result
 ;;
 
 let id x = x
 
-let run_suite ?fmt suite =
-  let f = fmt |> Option.fold ~none:(Format.get_std_formatter ()) ~some:id in
-  Format.fprintf f "@[<v>";
+let run_suite ?(fmt = Ocolor_format.raw_std_formatter) suite =
+  Format.fprintf fmt "@[<v>";
+  let ctx = empty in
   let result =
-    try
-      suite.examples |> List.iter (run_example f);
-      { success= true }
-    with
-    | _ -> { success= false }
+    let run = run_example fmt in
+    try suite.examples |> List.fold_left run ctx with
+    | _ -> { ctx with success= false }
   in
-  Format.pp_close_box f ();
+  Format.pp_close_box fmt ();
+  Format.pp_print_flush fmt ();
   result
 ;;
 
-let is_success { success } = success
+let is_success { success; _ } = success
+let get_no_of_failing_examples x = x.no_of_failing_examples
 
 (** This runs the test suite and exits the program. If the test suite is
     successful, it will exit with exit code zero, otherwise it will exit with
