@@ -3,9 +3,9 @@ open Speed.Dsl
 open Speed.Assertions
 open! Utils
 
-let no_of_examples ctx = ctx.examples |> List.length
+let no_of_examples ctx = ctx.examples |> List.length;;
 
-let examples =
+register
   [
     {
       name= "Should create context with two examples";
@@ -18,4 +18,3 @@ let examples =
           @@ equal_int 2);
     };
   ]
-;;

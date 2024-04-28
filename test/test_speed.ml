@@ -1,32 +1,25 @@
+open Speed
+open Dsl
 open Speed.Domain
 open Speed.Runner
 open Speed.Assertions
 open Utils
 
-let addExample ?(name = "dummy") f c = { examples= { name; f } :: c.examples }
+(* Important, if any is commented out, tests will not run *)
+open! Runner_test
+open! Dsl_test
 
-let () =
-  {
-    examples=
-      Dsl_test.examples
-      @ [
-          {
-            name= "is_success should return success=true when test case doesn't raise";
-            f=
-              (fun _ ->
-                expect
-                  (Context.empty |> addExample passing_test |> run_suite |> is_success)
-                  be_true);
-          };
-          {
-            name= "Run should return success=false when test case raises";
-            f=
-              (fun _ ->
-                expect
-                  (Context.empty |> addExample failing_test |> run_suite |> is_success)
-                  be_false);
-          };
-        ];
-  }
-  |> run_main
+let addExample ?(name = "dummy") f c = { examples= { name; f } :: c.examples };;
+
+Dsl.register
+  [
+    test "is_success should return success=true when test case doesn't raise" (fun _ ->
+      expect (Context.empty |> addExample passing_test |> run_suite |> is_success) be_true);
+    test "Run should return success=false when test case raises" (fun _ ->
+      expect
+        (Context.empty |> addExample failing_test |> run_suite |> is_success)
+        be_false);
+  ]
 ;;
+
+!Speed.Dsl.root_suite |> run_main
