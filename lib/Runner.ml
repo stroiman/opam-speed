@@ -27,15 +27,16 @@ let unwind ?on_error ?on_success ~(protect : 'a -> unit) f x =
 
 let run_example ?(print_break = true) fmt ctx example =
   if print_break then Format.fprintf fmt "@,";
+  Format.fprintf fmt "@[<v2>";
   let result =
     try
-      Format.pp_print_flush fmt ();
+      (* Format.pp_print_flush fmt (); *)
       example.f ();
-      Format.fprintf fmt "@[<v2>@{<green>✔@} %s" example.name;
+      Format.fprintf fmt "@{<green>✔@} %s" example.name;
       { ctx with no_of_passing_examples= ctx.no_of_passing_examples + 1 }
     with
     | e ->
-      Format.fprintf fmt "@[<v2>@{<red>✘@} %s" example.name;
+      Format.fprintf fmt "@{<red>✘@} %s" example.name;
       (match e with
        | Assertions.FormattedAssertionError pp -> Format.fprintf fmt "@,%t" pp
        | _ -> ());
@@ -48,15 +49,14 @@ let run_example ?(print_break = true) fmt ctx example =
 let id x = x
 
 let rec run_child_suite ?(print_break = false) fmt ctx suite =
-  if print_break then Format.pp_print_cut fmt ();
   let print_break =
     match suite.name with
     | None -> print_break
     | Some n ->
+      if print_break then Format.pp_print_cut fmt ();
       Format.fprintf fmt "@[<v2>@{<bold>•@} %s" n;
       true
   in
-  (* Option.fold ~none:() ~some:(fun n -> Format.fprintf fmt "@[<v2>- %s" n) suite.name; *)
   let ctx =
     match List.rev suite.child_groups with
     | [] -> ctx
@@ -65,14 +65,13 @@ let rec run_child_suite ?(print_break = false) fmt ctx suite =
       tl |> List.fold_left (run_child_suite ~print_break:true fmt) ctx
   in
   let result =
-    (* let ctx = suite.child_groups |> List.fold_left (run_child_suite fmt) ctx in *)
-    match suite.examples with
+    match List.rev suite.examples with
     | [] -> ctx
     | hd :: tl ->
       let ctx = run_example ~print_break fmt ctx hd in
       tl |> List.fold_left (run_example ~print_break:true fmt) ctx
   in
-  Option.fold ~none:() ~some:(fun _ -> Format.fprintf fmt "@]") suite.name;
+  if Option.is_some suite.name then Format.fprintf fmt "@]";
   result
 ;;
 
@@ -93,7 +92,21 @@ let get_no_of_passing_examples x = x.no_of_passing_examples
     successful, it will exit with exit code zero, otherwise it will exit with
     exit code 1. *)
 let run_main suite =
-  match is_success @@ run_suite suite with
-  | true -> exit 0
-  | false -> exit 1
+  let fmt = Ocolor_format.raw_std_formatter in
+  let result = run_suite suite in
+  let failing = get_no_of_failing_examples result in
+  let passing = get_no_of_passing_examples result in
+  Format.fprintf fmt "\n\n@[<v2>SUMMARY: ";
+  let exit_code =
+    if is_success result
+    then (
+      Format.fprintf fmt "@{<green>PASS@}";
+      0)
+    else (
+      Format.fprintf fmt "@{<red>FAIL@}";
+      1)
+  in
+  Format.fprintf fmt "@,Passing: %d@,Failing: %d@]" passing failing;
+  Format.pp_print_flush fmt ();
+  exit exit_code
 ;;

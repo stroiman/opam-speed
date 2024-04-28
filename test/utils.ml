@@ -9,10 +9,7 @@ let addExample ?(name = "_anonymous test_") f c =
 
 let add_child_group ?name spec ctx =
   Speed.Domain.
-    {
-      ctx with
-      child_groups= spec { Speed.Domain.Context.empty with name } :: ctx.child_groups;
-    }
+    { ctx with child_groups= spec { Context.empty with name } :: ctx.child_groups }
 ;;
 
 let add_failing_example ?name = addExample ?name failing_test
