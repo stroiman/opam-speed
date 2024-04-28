@@ -8,6 +8,7 @@ open! Utils
 (* Important, if any is commented out, tests will not run *)
 open! Runner_test
 open! Dsl_test
+open! Assertions_test
 
 let fmt = null_formatter;;
 

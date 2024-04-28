@@ -31,8 +31,11 @@ let run_example fmt ctx example =
       Format.fprintf fmt "@[<v2>@{<green>✔@} %s" example.name;
       ctx
     with
-    | _ ->
+    | e ->
       Format.fprintf fmt "@[<v2>@{<red>✘@} %s" example.name;
+      (match e with
+       | Assertions.FormattedAssertionError pp -> Format.fprintf fmt "@,%t" pp
+       | _ -> ());
       { success= false; no_of_failing_examples= ctx.no_of_failing_examples + 1 }
   in
   Format.fprintf fmt "@]@,";
