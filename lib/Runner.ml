@@ -47,15 +47,30 @@ let run_example ?(print_break = true) fmt ctx example =
 
 let id x = x
 
-let rec run_child_suite fmt ctx suite =
-  Option.fold ~none:() ~some:(fun n -> Format.fprintf fmt "@[<v2>- %s@," n) suite.name;
-  let result =
-    let c2 = suite.child_groups |> List.fold_left (run_child_suite fmt) ctx in
-    match suite.examples with
-    | [] -> c2
+let rec run_child_suite ?(print_break = false) fmt ctx suite =
+  if print_break then Format.pp_print_cut fmt ();
+  let print_break =
+    match suite.name with
+    | None -> print_break
+    | Some n ->
+      Format.fprintf fmt "@[<v2>@{<bold>•@} %s" n;
+      true
+  in
+  (* Option.fold ~none:() ~some:(fun n -> Format.fprintf fmt "@[<v2>- %s" n) suite.name; *)
+  let ctx =
+    match List.rev suite.child_groups with
+    | [] -> ctx
     | hd :: tl ->
-      let c3 = run_example ~print_break:false fmt c2 hd in
-      tl |> List.fold_left (run_example ~print_break:true fmt) c3
+      let ctx = run_child_suite ~print_break fmt ctx hd in
+      tl |> List.fold_left (run_child_suite ~print_break:true fmt) ctx
+  in
+  let result =
+    (* let ctx = suite.child_groups |> List.fold_left (run_child_suite fmt) ctx in *)
+    match suite.examples with
+    | [] -> ctx
+    | hd :: tl ->
+      let ctx = run_example ~print_break fmt ctx hd in
+      tl |> List.fold_left (run_example ~print_break:true fmt) ctx
   in
   Option.fold ~none:() ~some:(fun _ -> Format.fprintf fmt "@]") suite.name;
   result

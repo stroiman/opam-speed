@@ -8,14 +8,22 @@ let fmt = null_formatter;;
 
 Dsl.register
   [
-    test "One failing test should result in fail count of 1" (fun _ ->
-      let suite = Domain.Context.empty |> add_failing_example |> add_passing_example in
-      let result = run_suite ~fmt suite |> get_no_of_failing_examples in
-      expect result @@ equal_int 1);
-    test "Two failing tests should result in fail count of 2" (fun _ ->
-      let suite = Domain.Context.empty |> add_failing_example |> add_failing_example in
-      let result = run_suite ~fmt suite |> get_no_of_failing_examples in
-      expect result @@ equal_int 2);
+    context
+      "Counting no of failing tests"
+      [
+        test "One failing test should result in fail count of 1" (fun _ ->
+          let suite =
+            Domain.Context.empty |> add_failing_example |> add_passing_example
+          in
+          let result = run_suite ~fmt suite |> get_no_of_failing_examples in
+          expect result @@ equal_int 1);
+        test "Two failing tests should result in fail count of 2" (fun _ ->
+          let suite =
+            Domain.Context.empty |> add_failing_example |> add_failing_example
+          in
+          let result = run_suite ~fmt suite |> get_no_of_failing_examples in
+          expect result @@ equal_int 2);
+      ];
     test "Should run the examples in the specified order" (fun _ ->
       let suite =
         parse [ test "Example 1" passing_test; test "Example 2" passing_test ]
@@ -36,10 +44,11 @@ Dsl.register
     test "Should print the group name in output" (fun _ ->
       let suite =
         Domain.Context.empty
-        |> add_child_group ~name:"Grp" (add_passing_example ~name:"Ex")
+        |> add_child_group ~name:"Grp 1" (add_passing_example ~name:"Ex")
+        |> add_child_group ~name:"Grp 2" (add_passing_example ~name:"Ex")
       in
       let output = ref "" in
       let fmt = make_ref_string_printer output in
       run_suite ~fmt suite |> ignore;
-      expect !output @@ equal_string "- Grp\n  ✔ Ex");
+      expect !output @@ equal_string "• Grp 1\n  ✔ Ex\n• Grp 2\n  ✔ Ex");
   ]
