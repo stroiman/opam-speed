@@ -23,3 +23,14 @@ let get_printed_string pp =
   Format.pp_print_flush fmt ();
   !s
 ;;
+
+let make_ref_string_printer s =
+  let out b p l =
+    let current = !s in
+    let appended = String.sub b p l in
+    s := current ^ appended
+  in
+  Format.make_formatter out (fun _ -> ())
+;;
+(* pp fmt; *)
+(* Format.pp_print_flush fmt () *)

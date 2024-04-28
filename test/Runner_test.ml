@@ -16,4 +16,12 @@ Dsl.register
       let suite = Domain.Context.empty |> add_failing_example |> add_failing_example in
       let result = run_suite ~fmt suite |> get_no_of_failing_examples in
       expect result @@ equal_int 2);
+    test "Should run the examples in the specified order" (fun _ ->
+      let suite =
+        parse [ test "Example 1" passing_test; test "Example 2" passing_test ]
+      in
+      let output = ref "" in
+      let fmt = make_ref_string_printer output in
+      run_suite ~fmt suite |> ignore;
+      expect !output @@ equal_string "✔ Example 1\n✔ Example 2\n");
   ]
