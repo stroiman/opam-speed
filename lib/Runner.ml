@@ -79,7 +79,7 @@ let run_main suite =
   let result = run_suite suite in
   let failing = get_no_of_failing_examples result in
   let passing = get_no_of_passing_examples result in
-  Format.fprintf fmt "\n\n@[<v2>SUMMARY: ";
+  Format.fprintf fmt "\n@,@[<v2>SUMMARY: ";
   let exit_code =
     if is_success result
     then (
@@ -89,7 +89,7 @@ let run_main suite =
       Format.fprintf fmt "@{<red>FAIL@}";
       1)
   in
-  Format.fprintf fmt "@,Passing: %d@,Failing: %d@]" passing failing;
+  Format.fprintf fmt "@,Passing tests: %d@,Failing tests: %d@,@]" passing failing;
   Format.pp_print_flush fmt ();
   exit exit_code
 ;;
