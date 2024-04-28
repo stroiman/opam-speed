@@ -8,23 +8,6 @@ type test_result = {
 
 let empty = { success= true; no_of_failing_examples= 0; no_of_passing_examples= 0 }
 
-let unwind ?on_error ?on_success ~(protect : 'a -> unit) f x =
-  try
-    let y = f x in
-    (match on_success with
-     | Some x -> x ()
-     | None -> ());
-    protect x;
-    y
-  with
-  | e ->
-    (match on_error with
-     | Some x -> x ()
-     | None -> ());
-    protect x;
-    raise e
-;;
-
 let run_example ?(print_break = true) fmt ctx example =
   if print_break then Format.fprintf fmt "@,";
   Format.fprintf fmt "@[<v2>";
