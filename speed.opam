@@ -12,6 +12,7 @@ bug-reports: "https://github.com/stroiman/opam-speed/issues"
 depends: [
   "ocaml"
   "dune" {>= "3.15"}
+  "ocolor"
   "odoc" {with-doc}
 ]
 build: [

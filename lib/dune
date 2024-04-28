@@ -1,2 +1,3 @@
 (library
+ (libraries ocolor)
  (name speed))

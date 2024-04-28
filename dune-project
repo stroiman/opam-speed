@@ -19,7 +19,7 @@
  (name speed)
  (synopsis "Speed - go fast by writing test first")
  (description "Test framework inspired by the greatest I've yet worked with, RSpec")
- (depends ocaml dune)
+ (depends ocaml dune ocolor)
  (tags
   (topics "to describe" your project)))
 
