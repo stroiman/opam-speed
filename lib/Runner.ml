@@ -19,26 +19,30 @@ let unwind ?on_error ?on_success ~(protect : 'a -> unit) f x =
     raise e
 ;;
 
-let run_example example =
-  Format.open_vbox 2;
-  Format.print_string example.name;
-  Format.print_cut ();
+let run_example fmt example =
+  Format.fprintf fmt "@[<v2>%s@," example.name;
   unwind
-    ~on_error:(fun _ -> Format.print_string "Failure")
-    ~on_success:(fun _ -> Format.print_string "Success")
-    ~protect:(fun _ ->
-      Format.close_box ();
-      Format.print_cut ())
+    ~on_error:(fun _ -> Format.pp_print_string fmt "Failure")
+    ~on_success:(fun _ -> Format.pp_print_string fmt "Success")
+    ~protect:(fun _ -> Format.fprintf fmt "@]@,")
     example.f
     ()
 ;;
 
-let run_suite suite =
-  try
-    suite.examples |> List.iter run_example;
-    { success= true }
-  with
-  | _ -> { success= false }
+let id x = x
+
+let run_suite ?fmt suite =
+  let f = fmt |> Option.fold ~none:(Format.get_std_formatter ()) ~some:id in
+  Format.fprintf f "@[<v>";
+  let result =
+    try
+      suite.examples |> List.iter (run_example f);
+      { success= true }
+    with
+    | _ -> { success= false }
+  in
+  Format.pp_close_box f ();
+  result
 ;;
 
 let is_success { success } = success
