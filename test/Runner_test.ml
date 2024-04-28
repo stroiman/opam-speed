@@ -23,5 +23,23 @@ Dsl.register
       let output = ref "" in
       let fmt = make_ref_string_printer output in
       run_suite ~fmt suite |> ignore;
-      expect !output @@ equal_string "✔ Example 1\n✔ Example 2\n");
+      expect !output @@ equal_string "✔ Example 1\n✔ Example 2");
+    test "Should run tests inside groups" (fun _ ->
+      let suite =
+        Domain.Context.empty
+        |> add_child_group (fun x -> x |> add_passing_example |> add_passing_example)
+        |> add_child_group (fun x -> x |> add_passing_example |> add_failing_example)
+      in
+      let suite_result = run_suite ~fmt suite in
+      expect (get_no_of_failing_examples suite_result) @@ equal_int 1;
+      expect (get_no_of_passing_examples suite_result) @@ equal_int 3);
+    test "Should print the group name in output" (fun _ ->
+      let suite =
+        Domain.Context.empty
+        |> add_child_group ~name:"Grp" (add_passing_example ~name:"Ex")
+      in
+      let output = ref "" in
+      let fmt = make_ref_string_printer output in
+      run_suite ~fmt suite |> ignore;
+      expect !output @@ equal_string "- Grp\n  ✔ Ex");
   ]

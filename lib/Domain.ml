@@ -5,8 +5,12 @@ type example = {
   f: test_function;
 }
 
-type t = { examples: example list }
+type t = {
+  name: string option;
+  child_groups: t list;
+  examples: example list;
+}
 
 module Context = struct
-  let empty = { examples= [] }
+  let empty = { name= None; child_groups= []; examples= [] }
 end

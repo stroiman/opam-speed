@@ -4,7 +4,15 @@ let passing_test () = ()
 let failing_test () = raise TestError
 
 let addExample ?(name = "_anonymous test_") f c =
-  Speed.Domain.{ examples= { name; f } :: c.examples }
+  Speed.Domain.{ c with examples= { name; f } :: c.examples }
+;;
+
+let add_child_group ?name spec ctx =
+  Speed.Domain.
+    {
+      ctx with
+      child_groups= spec { Speed.Domain.Context.empty with name } :: ctx.child_groups;
+    }
 ;;
 
 let add_failing_example ?name = addExample ?name failing_test
