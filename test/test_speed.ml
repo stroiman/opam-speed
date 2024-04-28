@@ -9,15 +9,17 @@ open Utils
 open! Runner_test
 open! Dsl_test
 
-let addExample ?(name = "dummy") f c = { examples= { name; f } :: c.examples };;
+let fmt = null_formatter;;
 
 Dsl.register
   [
     test "is_success should return success=true when test case doesn't raise" (fun _ ->
-      expect (Context.empty |> addExample passing_test |> run_suite |> is_success) be_true);
+      expect
+        (Context.empty |> addExample passing_test |> run_suite ~fmt |> is_success)
+        be_true);
     test "Run should return success=false when test case raises" (fun _ ->
       expect
-        (Context.empty |> addExample failing_test |> run_suite |> is_success)
+        (Context.empty |> addExample failing_test |> run_suite ~fmt |> is_success)
         be_false);
   ]
 ;;
