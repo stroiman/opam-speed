@@ -25,4 +25,14 @@ register
       in
       let expected = "Assertion error: The value compared\n  Expected: 2\n  Actual: 1" in
       expect actual (equal_string expected));
+    test "String comparison errors" (fun _ ->
+      let actual =
+        try
+          expect "Foo" (equal_string "bar");
+          ""
+        with
+        | FormattedAssertionError f -> get_printed_string f
+      in
+      let expected = "Assertion error\n  Expected: bar\n  Actual: Foo" in
+      expect actual (equal_string expected));
   ]
