@@ -68,17 +68,18 @@ noise;
 > covered by a test; But this was not caught as code had been committed with
 > focused tests (the test framework did not support this behaviour)
 
-### Assertion framework is out of scope
+### Assertion framework is out of scope (but currently included)
 
 It is _not_ in scope to include an assertion framework. The goal of this is to
 create a super effective microtask runner. Other tools may create the perfect
 assertion framework.
 
-I do have some assertion code in the tool; and it might even be made more
-ellaborate over time. But it is logically completely separated from the
-microtask runner.
+But I also want to have the ability to have assertions, so right now; this
+project is the nesting ground for an assertion framework; and there is _some_
+dependency from the test runner to the assertion code in order to format errors
+nicely.
 
-It is also an area I have tried before, and never felt I found the right model.
+It is also an area I have tried before, and never felt I found the right design.
 Chai stands out to me as the best assertion framework; however it fully embraces
 the dynamic nature of JavaScript; which of course doesn't translate to OCaml at
 all. If it ends out being a good assertion framework; it will probably make its
@@ -95,27 +96,30 @@ these libraries.
 It is also a clear design goal to utilise OCaml5 multicore support.
 
 The system should be highly extensible. As an example. by default, a
-specification is a `unit -> unit` function, but for testing IO code; the type
-would be `unit -> unit promise`. And if you'd rather want the test to return a
-`result` instead of raising an exception; that should also be possible.
+specification is a `unit -> unit` function, and a failed test will raise an
+exception. But for testing IO code; the type would be `unit -> unit promise`.
+And if you'd rather want the test to return a `result` instead of raising an
+exception; that should also be possible.
 
 The _outcome_ of running a test suite is passed to a _reporter_. If you define
 your own outcome of a test; you must define your own _reporter_ to handle the
 outcome; such that the outcome will be handled correctly.
 
 There is a simple `run_main` function, that your own code can use to run the
-test suite.
+test suite. It basically does this
 
 ```
 let run_main suite =
   match is_success @@ run_suite suite with true -> exit 0 | false -> exit 1
 ```
 
-That is, btw, the only piece of code that is not explicitly tested; However it
-is implicitly tested, as I use it in my own test suite; and I always start with
-a failing test.
+There's a bit more to it right now; but that's the basic idea.
 
-## Previous work
+This funct btw, is the only piece of code that is not explicitly tested; However
+it is implicitly tested, as I use it in my own test suite; and I always start
+with a failing test.
+
+## Previous experiences
 
 I have previously created a FSpec, a testing tool for F#; and Respect, a
 testing tool writting in ReasonML (but with focus on the JavaScript side of
