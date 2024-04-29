@@ -4,3 +4,4 @@ break-separators=after
 dock-collection-brackets
 break-collection-expressions=fit-or-vertical
 field-space=tight
+exp-grouping=preserve
