@@ -13,3 +13,5 @@ let register examples =
   root_suite
   := { !root_suite with child_groups= parse examples :: !root_suite.child_groups }
 ;;
+
+let root_context name specs = register [ context name specs ]
