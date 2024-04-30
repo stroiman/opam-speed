@@ -13,17 +13,14 @@ open! Runner_test
 
 let fmt = null_formatter;;
 
-root_context
-  "Test outcome"
+root_context "Test outcome"
   [
-    test
-      "is_success should return success=true when test case doesn't raise"
+    test "is_success should return success=true when test case doesn't raise"
       [%f
         expect
           (Context.empty |> addExample passing_test |> run_suite ~fmt |> is_success)
           be_true];
-    test
-      "is_success should return success=false when test case raises"
+    test "is_success should return success=false when test case raises"
       [%f_
         expect
           (Context.empty |> addExample failing_test |> run_suite ~fmt |> is_success)

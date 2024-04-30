@@ -1,8 +1,13 @@
 profile=janestreet
 break-colon=before
 break-separators=after
-dock-collection-brackets
+dock-collection-brackets=true
 break-collection-expressions=fit-or-vertical
 field-space=tight
 exp-grouping=preserve
 sequence-blank-line=preserve-one
+break-fun-decl=wrap
+indicate-multiline-delimiters=closing-on-separate-line
+single-case=compact
+wrap-fun-args=true
+space-around-lists=false
