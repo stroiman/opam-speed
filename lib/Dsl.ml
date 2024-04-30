@@ -1,6 +1,7 @@
 open Domain
 
 let test name f ctx = { ctx with examples= { name; f } :: ctx.examples }
+let it = test
 let parse specs = specs |> List.fold_left (fun a b -> b a) Context.empty
 
 let context name specs ctx =

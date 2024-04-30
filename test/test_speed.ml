@@ -6,6 +6,7 @@ open! Speed.Assertions
 open! Utils
 
 (* Important, if any is commented out, tests will not run *)
+open! Effect_dsl_test
 open! Assertions_test
 open! Dsl_test
 open! Runner_test

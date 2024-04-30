@@ -55,3 +55,5 @@ let expect ?name actual assertion =
     raise (FormattedAssertionError errorFormat)
   | Error _ -> raise AssertionError
 ;;
+
+let should ?name assertion actual = expect ?name actual assertion
