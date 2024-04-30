@@ -1,0 +1,8 @@
+(library
+  (name speed_ppx_fun)
+  (public_name speed.ppx_fun)
+  (kind ppx_rewriter)
+  (libraries ppxlib)
+  (preprocess (pps ppxlib.metaquot))
+  )
+

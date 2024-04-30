@@ -1,3 +1,4 @@
 (test
   (libraries base speed ocolor)
+  (preprocess (pps speed.ppx_fun))
   (name test_speed))
