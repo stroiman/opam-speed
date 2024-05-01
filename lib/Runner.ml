@@ -87,7 +87,8 @@ let run_ex fmt ctx (example : Domain.example) =
       cont ctx Success
     with e ->
       ( match e with
-        | Assertions.FormattedAssertionError pp -> cont ctx (FailureWithFormat pp)
+        | Assertions.FormattedAssertionError pp ->
+          cont ctx (FailureWithFormat pp)
         | _ -> cont ctx Failure
       )
   )
@@ -99,7 +100,9 @@ let run_e fmt ctx (example : Domain.example) : test_result =
 
 let rec run_child_suite fmt ctx suite =
   start_group suite.name fmt ctx (fun ctx cont ->
-    let ctx = List.rev suite.child_groups |> List.fold_left (run_child_suite fmt) ctx in
+    let ctx =
+      List.rev suite.child_groups |> List.fold_left (run_child_suite fmt) ctx
+    in
     let result = List.fold_left (run_e fmt) ctx (List.rev suite.examples) in
     cont result
   )
@@ -138,7 +141,8 @@ let run_main suite =
       1
     )
   in
-  Format.fprintf fmt "@,Passing tests: %d@,Failing tests: %d@,@]" passing failing;
+  Format.fprintf fmt "@,Passing tests: %d@,Failing tests: %d@,@]" passing
+    failing;
   Format.pp_print_flush fmt ();
   exit exit_code
 ;;

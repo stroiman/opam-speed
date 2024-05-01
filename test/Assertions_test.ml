@@ -28,27 +28,18 @@ let match_sexp (parser : 'a -> Base.Sexp.t) expected (actual : 'a) =
     let actual = find_value l in
     ( match actual with
       | None ->
-        Error
-          (`AssertionErrorWithFormat
-            (fun fmt -> Stdlib.Format.pp_print_string fmt "Key not found")
-            )
+        Error (`AssertionErrorWithFormat (Stdlib.Format.dprintf "Key not found"))
       | Some c ->
         c
         |> matcher
         |> Result.map_error ~f:(function
           | `AssertionErrorWithFormat pp ->
-            let pp fmt =
-              Stdlib.Format.fprintf fmt "@[<v2>Object field: %s@,%t@]" key pp
-            in
-            `AssertionErrorWithFormat pp
+            `AssertionErrorWithFormat
+              (Stdlib.Format.dprintf "@[<v2>Object field: %s@,%t@]" key pp)
           | x -> x
           )
     )
-  | _ ->
-    Error
-      (`AssertionErrorWithFormat
-        (fun fmt -> Stdlib.Format.pp_print_string fmt "Not a list")
-        )
+  | _ -> Error (`AssertionErrorWithFormat (Stdlib.Format.dprintf "Not a list"))
 ;;
 
 let string_of_sexp = Base.string_of_sexp
