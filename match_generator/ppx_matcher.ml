@@ -26,17 +26,15 @@ let str_gen ~loc ~path:_ (_rec, t) =
         [%expr
           [%e iter]
           |> Speed.Assertions.AssertionResult.bind ~f:(fun _ ->
-            Option.fold ~none:(Ok ())
-              ~some:(fun v ->
-                Speed.Assertions.AssertionResult.map ignore
-                  (v
-                     [%e
-                       Ast.pexp_field
-                         (Ast.pexp_ident lident_actual)
-                         (lident_of_field field)]
-                  )
-              )
-              [%e Ast.pexp_ident (lident_of_field field)]
+            match [%e Ast.pexp_ident (lident_of_field field)] with
+            | None -> Ok ()
+            | Some v ->
+              [%e
+                Ast.pexp_field
+                  (Ast.pexp_ident lident_actual)
+                  (lident_of_field field)]
+              |> v
+              |> Speed.Assertions.AssertionResult.map ignore
           )]
       )
     in
