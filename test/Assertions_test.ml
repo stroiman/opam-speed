@@ -10,6 +10,59 @@ let run_and_get_error_meg f =
   with FormattedAssertionError f -> get_printed_string f
 ;;
 
+let match_sexp (parser : 'a -> Base.Sexp.t) expected (actual : 'a) =
+  let open Base in
+  let key, matcher = expected in
+  let find_value list =
+    List.find_map
+      ~f:(function
+        | Sexp.List [Sexp.Atom x; Sexp.Atom y] ->
+          if String.equal x key then Some y else None
+        | _ -> None
+        )
+      list
+  in
+  (* let sexp = Base.Sexp.of_string expected; *)
+  match parser actual with
+  | Sexp.List l ->
+    let actual = find_value l in
+    ( match actual with
+      | None ->
+        Error
+          (`AssertionErrorWithFormat
+            (fun fmt () -> Stdlib.Format.pp_print_string fmt "Key not found")
+            )
+      | Some c ->
+        c
+        |> matcher
+        |> Result.map_error ~f:(function
+          | `AssertionErrorWithFormat pp ->
+            let pp fmt () =
+              Stdlib.Format.fprintf fmt "@[<v2>Object field: %s@,%a@]" key pp ()
+            in
+            `AssertionErrorWithFormat pp
+          | x -> x
+          )
+    )
+  | _ ->
+    Error
+      (`AssertionErrorWithFormat
+        (fun fmt () -> Stdlib.Format.pp_print_string fmt "Not a list")
+        )
+;;
+
+let string_of_sexp = Base.string_of_sexp
+let sexp_of_string = Base.sexp_of_string
+
+type foo = {
+  a: string;
+  b: string;
+}
+[@@deriving sexp]
+
+let match_sexp_of_string expected = match_sexp Parsexp.Single.parse_string_exn expected
+let match_t expected = match_sexp sexp_of_foo expected;;
+
 run_root (fun _ ->
   context "Assertion library"
     [%f
@@ -36,5 +89,15 @@ run_root (fun _ ->
           let expected = "Assertion error\n  Expected: bar\n  Actual: Foo" in
           (fun _ -> expect "Foo" (equal_string "bar"))
           |> run_and_get_error_meg
-          |> should (equal_string expected)]]
+          |> should (equal_string expected)];
+
+      test "Sexp comparison" (fun _ ->
+        let input = "((a value_for_a)(b value_for_b))" in
+        input |> should (match_sexp_of_string ("a", equal_string "value_for_a"))
+      );
+
+      test "Record sexp comparison" (fun _ ->
+        let actual = { a= "Value for a"; b= "Value for b" } in
+        expect actual (match_t ("a", equal_string "Value for a"))
+      )]
 )

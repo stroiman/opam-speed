@@ -1,4 +1,4 @@
 (test
-  (libraries base speed ocolor)
-  (preprocess (pps speed.ppx_fun))
+  (libraries base speed ocolor parsexp)
+  (preprocess (pps speed.ppx_fun ppx_jane))
   (name test_speed))
