@@ -1,61 +1,108 @@
 open Domain
 
-type test_result = {
-  success: bool;
-  no_of_failing_examples: int;
-  no_of_passing_examples: int;
-}
+module Reporter = struct
+  type end_test = unit
 
-let empty = { success= true; no_of_failing_examples= 0; no_of_passing_examples= 0 }
+  type test_result = {
+    success: bool;
+    print_break: bool;
+    no_of_failing_examples: int;
+    no_of_passing_examples: int;
+  }
 
-let run_example ?(print_break = true) fmt ctx example =
-  if print_break then Format.fprintf fmt "@,";
-  Format.fprintf fmt "@[<v2>";
-  let result =
+  type t = test_result
+
+  type test_outcome =
+    | Success
+    | Failure
+    | FailureWithFormat of (Format.formatter -> unit)
+
+  let empty =
+    {
+      success= true;
+      print_break= false;
+      no_of_failing_examples= 0;
+      no_of_passing_examples= 0;
+    }
+  ;;
+
+  let is_success { success; _ } = success
+
+  let start_group name fmt ctx run =
+    let print_break =
+      match name with
+      | None -> ctx.print_break
+      | Some n ->
+        if ctx.print_break then Format.pp_print_cut fmt ();
+        Format.fprintf fmt "@[<v2>@{<bold>•@} %s" n;
+        true
+    in
+    run { ctx with print_break } (fun ctx ->
+      if Option.is_some name then Format.fprintf fmt "@]";
+      ctx
+    )
+  ;;
+
+  let start_example name fmt ctx run =
+    if ctx.print_break then Format.fprintf fmt "@,";
+    run ctx (fun ctx result cont ->
+      let outcome =
+        match result with
+        | Success ->
+          Format.fprintf fmt "@{<green>✔@} %s" name;
+          {
+            ctx with
+            no_of_passing_examples= ctx.no_of_passing_examples + 1;
+            print_break= true;
+          }
+        | Failure ->
+          Format.fprintf fmt "@{<red>✘@} %s" name;
+          {
+            ctx with
+            success= false;
+            print_break= true;
+            no_of_failing_examples= ctx.no_of_failing_examples + 1;
+          }
+        | FailureWithFormat pp ->
+          Format.fprintf fmt "@{<red>✘@} %s" name;
+          Format.fprintf fmt "@,%t" pp;
+          {
+            ctx with
+            success= false;
+            print_break= true;
+            no_of_failing_examples= ctx.no_of_failing_examples + 1;
+          }
+      in
+      cont outcome
+    )
+  ;;
+end
+
+open Reporter
+
+let run_ex fmt ctx (example : Domain.example) =
+  start_example example.name fmt ctx (fun ctx cont ->
     try
-      (* Format.pp_print_flush fmt (); *)
       example.f ();
-      Format.fprintf fmt "@{<green>✔@} %s" example.name;
-      { ctx with no_of_passing_examples= ctx.no_of_passing_examples + 1 }
-    with
-    | e ->
-      Format.fprintf fmt "@{<red>✘@} %s" example.name;
-      (match e with
-       | Assertions.FormattedAssertionError pp -> Format.fprintf fmt "@,%t" pp
-       | _ -> ());
-      { ctx with success= false; no_of_failing_examples= ctx.no_of_failing_examples + 1 }
-  in
-  Format.fprintf fmt "@]";
-  result
+      cont ctx Success
+    with e ->
+      ( match e with
+        | Assertions.FormattedAssertionError pp -> cont ctx (FailureWithFormat pp)
+        | _ -> cont ctx Failure
+      )
+  )
 ;;
 
-let id x = x
+let run_e fmt ctx (example : Domain.example) : test_result =
+  run_ex fmt ctx example (fun r -> r)
+;;
 
-let rec run_child_suite ?(print_break = false) fmt ctx suite =
-  let print_break =
-    match suite.name with
-    | None -> print_break
-    | Some n ->
-      if print_break then Format.pp_print_cut fmt ();
-      Format.fprintf fmt "@[<v2>@{<bold>•@} %s" n;
-      true
-  in
-  let ctx =
-    match List.rev suite.child_groups with
-    | [] -> ctx
-    | hd :: tl ->
-      let ctx = run_child_suite ~print_break fmt ctx hd in
-      tl |> List.fold_left (run_child_suite ~print_break:true fmt) ctx
-  in
-  let result =
-    match List.rev suite.examples with
-    | [] -> ctx
-    | hd :: tl ->
-      let ctx = run_example ~print_break fmt ctx hd in
-      tl |> List.fold_left (run_example ~print_break:true fmt) ctx
-  in
-  if Option.is_some suite.name then Format.fprintf fmt "@]";
-  result
+let rec run_child_suite fmt ctx suite =
+  start_group suite.name fmt ctx (fun ctx cont ->
+    let ctx = List.rev suite.child_groups |> List.fold_left (run_child_suite fmt) ctx in
+    let result = List.fold_left (run_e fmt) ctx (List.rev suite.examples) in
+    cont result
+  )
 ;;
 
 let run_suite ?(fmt = Ocolor_format.raw_std_formatter) suite =
@@ -84,10 +131,12 @@ let run_main suite =
     if is_success result
     then (
       Format.fprintf fmt "@{<green>PASS@}";
-      0)
+      0
+    )
     else (
       Format.fprintf fmt "@{<red>FAIL@}";
-      1)
+      1
+    )
   in
   Format.fprintf fmt "@,Passing tests: %d@,Failing tests: %d@,@]" passing failing;
   Format.pp_print_flush fmt ();
