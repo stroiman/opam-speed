@@ -9,14 +9,11 @@ let match_failure x = Error (`AssertionError x)
 let equality_failure expected actual pp =
   Error
     (`AssertionErrorWithFormat
-      (fun format () ->
-        Format.fprintf
-          format
-          "Expected: @{<green>%a@}@,Actual: @{<red>%a@}"
-          pp
-          expected
-          pp
-          actual))
+      (fun format ->
+        Format.fprintf format "Expected: @{<green>%a@}@,Actual: @{<red>%a@}" pp
+          expected pp actual
+      )
+      )
 ;;
 
 let be_true = function
@@ -47,10 +44,11 @@ let expect ?name actual assertion =
   | Error (`AssertionErrorWithFormat pp) ->
     let errorFormat f =
       Format.fprintf f "@[<v2>@{<bold>Assertion error@}";
-      (match name with
-       | Some n -> Format.fprintf f ": %s" n
-       | None -> ());
-      Format.fprintf f "@,%a@]" pp ()
+      ( match name with
+        | Some n -> Format.fprintf f ": %s" n
+        | None -> ()
+      );
+      Format.fprintf f "@,%t@]" pp
     in
     raise (FormattedAssertionError errorFormat)
   | Error _ -> raise AssertionError

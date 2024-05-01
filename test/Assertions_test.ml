@@ -30,15 +30,15 @@ let match_sexp (parser : 'a -> Base.Sexp.t) expected (actual : 'a) =
       | None ->
         Error
           (`AssertionErrorWithFormat
-            (fun fmt () -> Stdlib.Format.pp_print_string fmt "Key not found")
+            (fun fmt -> Stdlib.Format.pp_print_string fmt "Key not found")
             )
       | Some c ->
         c
         |> matcher
         |> Result.map_error ~f:(function
           | `AssertionErrorWithFormat pp ->
-            let pp fmt () =
-              Stdlib.Format.fprintf fmt "@[<v2>Object field: %s@,%a@]" key pp ()
+            let pp fmt =
+              Stdlib.Format.fprintf fmt "@[<v2>Object field: %s@,%t@]" key pp
             in
             `AssertionErrorWithFormat pp
           | x -> x
@@ -47,7 +47,7 @@ let match_sexp (parser : 'a -> Base.Sexp.t) expected (actual : 'a) =
   | _ ->
     Error
       (`AssertionErrorWithFormat
-        (fun fmt () -> Stdlib.Format.pp_print_string fmt "Not a list")
+        (fun fmt -> Stdlib.Format.pp_print_string fmt "Not a list")
         )
 ;;
 
@@ -60,7 +60,10 @@ type foo = {
 }
 [@@deriving sexp]
 
-let match_sexp_of_string expected = match_sexp Parsexp.Single.parse_string_exn expected
+let match_sexp_of_string expected =
+  match_sexp Parsexp.Single.parse_string_exn expected
+;;
+
 let match_t expected = match_sexp sexp_of_foo expected;;
 
 run_root (fun _ ->
@@ -70,13 +73,16 @@ run_root (fun _ ->
         [%f
           it "Should print actual and expected"
             [%f
-              let actual = run_and_get_error_meg (fun _ -> expect 1 (equal_int 2)) in
+              let actual =
+                run_and_get_error_meg (fun _ -> expect 1 (equal_int 2))
+              in
               let expected = "Assertion error\n  Expected: 2\n  Actual: 1" in
               expect actual (equal_string expected)];
 
           it "Should include a name in the error message" (fun _ ->
             let actual =
-              run_and_get_error_meg [%f expect ~name:"The value compared" 1 (equal_int 2)]
+              run_and_get_error_meg
+                [%f expect ~name:"The value compared" 1 (equal_int 2)]
             in
             let expected =
               "Assertion error: The value compared\n  Expected: 2\n  Actual: 1"
