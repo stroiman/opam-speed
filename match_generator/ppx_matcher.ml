@@ -29,51 +29,23 @@ let[@warning "-26"] str_gen ~loc ~path:_ (_rec, t) =
       in
       let init = ok_unit () in
       fields
-      |> List.fold_right ~init ~f:(fun field _iter ->
-        Ast.pexp_apply
-          (Ast.pexp_ident (Loc.make ~loc (Longident.parse "Result.bind")))
-          [
-            Nolabel, _iter;
-            ( Nolabel,
-              Ast.pexp_fun Nolabel None Ast.ppat_any
-                (Ast.pexp_apply
-                   (Ast.pexp_ident
-                      (Loc.make ~loc (Longident.parse "Option.fold"))
-                   )
-                   [
-                     Labelled "none", ok_unit ();
-                     ( Labelled "some",
-                       Ast.pexp_fun Nolabel None
-                         (Ast.ppat_var (Loc.make ~loc "v"))
-                         (Ast.pexp_apply
-                            (Ast.pexp_ident
-                               (Loc.make ~loc (Longident.parse "Result.map"))
-                            )
-                            [
-                              ( Nolabel,
-                                Ast.pexp_ident
-                                  (Loc.make ~loc (Longident.parse "ignore")) );
-                              ( Nolabel,
-                                Ast.pexp_apply
-                                  (Ast.pexp_ident
-                                     (Loc.make ~loc (Longident.parse "v"))
-                                  )
-                                  [
-                                    ( Nolabel,
-                                      Ast.pexp_field
-                                        (Ast.pexp_ident
-                                           (Loc.make ~loc
-                                              (Longident.parse "actual")
-                                           )
-                                        )
-                                        (lident_of_field field) );
-                                  ] );
-                            ]
-                         ) );
-                     Nolabel, Ast.pexp_ident (lident_of_field field);
-                   ]
-                ) );
-          ]
+      |> List.fold_right ~init ~f:(fun field iter ->
+        let lident_actual = Loc.make ~loc (Longident.parse "actual") in
+        [%expr
+          [%e iter]
+          |> Speed.Assertions.AssertionResult.bind ~f:(fun _ ->
+            Option.fold ~none:(Ok ())
+              ~some:(fun v ->
+                Speed.Assertions.AssertionResult.map ignore
+                  (v
+                     [%e
+                       Ast.pexp_field
+                         (Ast.pexp_ident lident_actual)
+                         (lident_of_field field)]
+                  )
+              )
+              [%e Ast.pexp_ident (lident_of_field field)]
+          )]
       )
     in
     let init =

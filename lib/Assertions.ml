@@ -1,5 +1,12 @@
 type 'a assertion_result = 'a option
 
+module AssertionResult = struct
+  type ('a, 'b) t = ('a, 'b) result
+
+  let bind ~f x = Result.bind x f
+  let map = Result.map
+end
+
 exception AssertionError
 exception FormattedAssertionError of (Format.formatter -> unit)
 
