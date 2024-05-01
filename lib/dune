@@ -1,3 +1,5 @@
 (library
+ (name speed)
+ (public_name speed)
  (libraries ocolor)
- (name speed))
+ )
