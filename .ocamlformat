@@ -11,3 +11,4 @@ indicate-multiline-delimiters=closing-on-separate-line
 single-case=compact
 wrap-fun-args=true
 space-around-lists=false
+margin=80
