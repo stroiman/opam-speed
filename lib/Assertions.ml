@@ -7,20 +7,26 @@ module AssertionResult = struct
   let map = Result.map
 end
 
+type print = Format.formatter -> unit
+
 exception AssertionError
 exception FormattedAssertionError of (Format.formatter -> unit)
 
 let match_success x = Ok x
-let match_failure x = Error (`AssertionError x)
+
+let match_failure ?(pp : print option) x =
+  match pp with
+  | None -> Error (`AssertionError x)
+  | Some x -> Error (`AssertionErrorWithFormat x)
+;;
 
 let equality_failure expected actual pp =
-  Error
-    (`AssertionErrorWithFormat
-      (fun format ->
-        Format.fprintf format "Expected: @{<green>%a@}@,Actual: @{<red>%a@}" pp
-          expected pp actual
+  match_failure
+    ~pp:
+      (Format.dprintf "Expected: @{<green>%a@}@,Actual: @{<red>%a@}" pp expected
+         pp actual
       )
-      )
+    ()
 ;;
 
 let be_true = function
