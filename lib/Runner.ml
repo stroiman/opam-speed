@@ -94,26 +94,21 @@ let run_ex fmt ctx (example : Domain.example) =
   )
 ;;
 
-let run_e fmt ctx (example : Domain.example) : test_result =
-  run_ex fmt ctx example (fun r -> r)
-;;
-
-let rec run_child_suite fmt ctx suite outer_cont =
+let rec run_child_suite fmt ctx suite cont =
   let run_examples ctx cont =
-    List.fold_left (run_e fmt) ctx (List.rev suite.examples) |> cont
+    List.fold_left
+      (fun cont ex ctx -> run_ex fmt ctx ex cont)
+      cont suite.examples ctx
   in
 
   start_group suite.name fmt ctx
     (fun ctx cont ->
-      match suite.child_groups with
-      | [] -> run_examples ctx cont
-      | grps ->
-        List.fold_left
-          (fun cont grp ctx -> run_child_suite fmt ctx grp cont)
-          (fun ctx -> run_examples ctx cont)
-          grps ctx
+      let cont ctx = run_examples ctx cont in
+      List.fold_left
+        (fun cont grp ctx -> run_child_suite fmt ctx grp cont)
+        cont suite.child_groups ctx
     )
-    outer_cont
+    cont
 ;;
 
 let run_suite ?(fmt = Ocolor_format.raw_std_formatter) suite =
