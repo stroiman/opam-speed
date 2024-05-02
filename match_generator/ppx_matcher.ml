@@ -19,7 +19,8 @@ let str_gen ~loc ~path:_ (_rec, t) =
     in
     let pat =
       let type_name = t.ptype_name.txt in
-      Ast.pvar (type_name ^ "_matcher")
+      Ast.pvar
+        (if String.equal type_name "t" then "have" else type_name ^ "_matcher")
     in
     let expr =
       let body =

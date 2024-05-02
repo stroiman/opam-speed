@@ -7,6 +7,12 @@ type test_type = {
 }
 [@@deriving matcher]
 
+type t = {
+  x: string;
+  y: string;
+}
+[@@deriving matcher]
+
 let match_test = test_type_matcher
 
 let _match_test ?a ?b actual =
@@ -50,6 +56,9 @@ run_root (fun _ ->
     it "Should fail when any property mismatch" (fun _ ->
       let matcher = match_test ~a:(equal_string "Actual") ~b:(equal_int 43) in
       matcher { a= "Actual"; b= 42 } |> should be_error
-    )
+    );
+
+    it "Should just be called 'have' for a type named 't'"
+      [%f { x= "x"; y= "y" } |> should (have ~x:(equal_string "x"))]
   )
 )
