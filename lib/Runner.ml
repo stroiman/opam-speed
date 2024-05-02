@@ -28,7 +28,7 @@ module Reporter = struct
 
   let is_success { success; _ } = success
 
-  let start_group name fmt ctx run =
+  let start_group name fmt ctx run cont =
     let print_break =
       match name with
       | None -> ctx.print_break
@@ -39,7 +39,7 @@ module Reporter = struct
     in
     run { ctx with print_break } (fun ctx ->
       if Option.is_some name then Format.fprintf fmt "@]";
-      ctx
+      ctx |> cont
     )
   ;;
 
@@ -98,20 +98,28 @@ let run_e fmt ctx (example : Domain.example) : test_result =
   run_ex fmt ctx example (fun r -> r)
 ;;
 
-let rec run_child_suite fmt ctx suite =
-  start_group suite.name fmt ctx (fun ctx cont ->
-    let ctx =
-      List.rev suite.child_groups |> List.fold_left (run_child_suite fmt) ctx
-    in
-    let result = List.fold_left (run_e fmt) ctx (List.rev suite.examples) in
-    cont result
-  )
+let rec run_child_suite fmt ctx suite outer_cont =
+  let run_examples ctx cont =
+    List.fold_left (run_e fmt) ctx (List.rev suite.examples) |> cont
+  in
+
+  start_group suite.name fmt ctx
+    (fun ctx cont ->
+      match suite.child_groups with
+      | [] -> run_examples ctx cont
+      | grps ->
+        List.fold_left
+          (fun cont grp ctx -> run_child_suite fmt ctx grp cont)
+          (fun ctx -> run_examples ctx cont)
+          grps ctx
+    )
+    outer_cont
 ;;
 
 let run_suite ?(fmt = Ocolor_format.raw_std_formatter) suite =
   Format.fprintf fmt "@[<v>";
   let ctx = empty in
-  let result = run_child_suite fmt ctx suite in
+  let result = run_child_suite fmt ctx suite Fun.id in
   Format.pp_close_box fmt ();
   Format.pp_print_flush fmt ();
   result
