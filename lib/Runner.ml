@@ -89,7 +89,9 @@ let run_ex fmt ctx (example : Domain.example) =
       ( match e with
         | Assertions.FormattedAssertionError pp ->
           cont ctx (FailureWithFormat pp)
-        | _ -> cont ctx Failure
+        | exn ->
+          cont ctx
+            (FailureWithFormat (Format.dprintf "%s" (Printexc.to_string exn)))
       )
   )
 ;;

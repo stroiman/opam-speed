@@ -32,6 +32,14 @@ root_context "Test outcome"
            |> is_success
           )
           be_false];
+    test "should print exception message if test throes" (fun _ ->
+      let fmt, get_string = make_string_printer () in
+      let suite =
+        Context.empty |> addExample (fun _ -> failwith "error message from test")
+      in
+      let _ = run_suite ~fmt suite in
+      get_string () |> should @@ contain "error message from test"
+    );
   ]
 ;;
 

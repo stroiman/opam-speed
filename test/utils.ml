@@ -28,6 +28,13 @@ let make_ref_string_printer s =
   Format.make_formatter out (fun _ -> ())
 ;;
 
+let make_string_printer () =
+  let s = ref "" in
+  let get_string () = !s in
+  let printer = make_ref_string_printer s in
+  printer, get_string
+;;
+
 let get_printed_string pp =
   let s = ref "" in
   let fmt = make_ref_string_printer s in

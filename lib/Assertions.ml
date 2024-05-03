@@ -34,6 +34,16 @@ let be_true = function
   | false -> match_failure ()
 ;;
 
+let be_ok = function
+  | Ok x -> match_success x
+  | Error _ -> match_failure ()
+;;
+
+let be_error = function
+  | Error x -> match_success x
+  | Ok _ -> match_failure ()
+;;
+
 let be_false = function
   | false -> match_success false
   | true -> match_failure ()
@@ -50,6 +60,17 @@ let equal_string expected actual =
   | true -> match_success actual
   | false -> equality_failure expected actual Format.pp_print_string
 ;;
+
+let contain substring actual =
+  match Base.String.is_substring ~substring actual with
+  | true -> match_success actual
+  | false ->
+    equality_failure
+      (Format.sprintf "string containing '%s'" substring)
+      actual Format.pp_print_string
+;;
+
+let run_matcher matcher actual = matcher actual
 
 let expect ?name actual assertion =
   match assertion actual with

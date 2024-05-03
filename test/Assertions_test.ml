@@ -81,12 +81,28 @@ run_root (fun _ ->
             expect actual (equal_string expected)
           )];
 
-      test "String comparison errors"
-        [%f
-          let expected = "Assertion error\n  Expected: bar\n  Actual: Foo" in
-          (fun _ -> expect "Foo" (equal_string "bar"))
-          |> run_and_get_error_meg
-          |> should (equal_string expected)];
+      context "String assertions" (fun _ ->
+        test "String comparison errors"
+          [%f
+            let expected = "Assertion error\n  Expected: bar\n  Actual: Foo" in
+            (fun _ -> expect "Foo" (equal_string "bar"))
+            |> run_and_get_error_meg
+            |> should (equal_string expected)];
+
+        context "contains" (fun _ ->
+          test "Should succeed when actual contains substring" (fun _ ->
+            let matcher = contain "def" in
+            let actual = "abcdefgeh" in
+            actual |> run_matcher matcher |> should be_ok
+          );
+
+          test "Should fail when actual contains substring" (fun _ ->
+            let matcher = contain "xyz" in
+            let actual = "abcdefgeh" in
+            actual |> run_matcher matcher |> should be_error
+          )
+        )
+      );
 
       test "Sexp comparison" (fun _ ->
         let input = "((a value_for_a)(b value_for_b))" in
