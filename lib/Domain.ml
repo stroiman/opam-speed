@@ -34,5 +34,5 @@ module LwtTestResult = struct
 end
 
 module Sync = Make (SyncTestResult)
-module Lwt = Make (LwtTestResult)
+module LwtDomain = Make (LwtTestResult)
 include Sync

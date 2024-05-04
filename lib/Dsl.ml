@@ -47,5 +47,5 @@ module Make (T : DOMAIN) = struct
 end
 
 module Sync = Make (Domain.Sync)
-module Lwt = Make (Domain.Lwt)
+module LwtDsl = Make (Domain.LwtDomain)
 include Sync

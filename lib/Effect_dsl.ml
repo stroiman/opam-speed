@@ -47,5 +47,5 @@ module Make (D : Dsl.DOMAIN) (RootSuite : ROOT_SUITE with type t = D.t) = struct
 end
 
 module Sync = Make (Domain.Sync) (Dsl.Sync)
-module Lwt = Make (Domain.Lwt) (Dsl.Lwt)
+module LwtEffectDsl = Make (Domain.LwtDomain) (Dsl.LwtDsl)
 include Sync
