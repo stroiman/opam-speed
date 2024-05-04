@@ -1,5 +1,52 @@
 open Domain
 
+module type EXAMPLE = sig
+  type context
+  type test_result
+  type test_function = context -> test_result
+
+  type example = {
+    name: string;
+    f: test_function;
+  }
+end
+
+module ExampleRunner = struct
+  type test_outcome =
+    | Success
+    | Failure
+    | FailureWithFormat of (Format.formatter -> unit)
+
+  module type EXAMPLE_RUNNER = sig
+    type test_function
+    type test_result
+    type 'a cont = (test_result -> 'a) -> 'a
+
+    val run : test_function -> 'a cont -> 'a
+  end
+
+  module SyncRunner = struct
+    type test_function = Domain.Sync.test_function
+    type test_result = Domain.Sync.test_result
+
+    let run f ctx cont =
+      try
+        f ();
+        cont ctx Success
+      with e ->
+        ( match e with
+          | Assertions.FormattedAssertionError pp ->
+            cont ctx (FailureWithFormat pp)
+          | exn ->
+            cont ctx
+              (FailureWithFormat (Format.dprintf "%s" (Printexc.to_string exn)))
+        )
+    ;;
+  end
+end
+
+open ExampleRunner
+
 module Reporter = struct
   type end_test = unit
 
@@ -11,11 +58,6 @@ module Reporter = struct
   }
 
   type t = test_result
-
-  type test_outcome =
-    | Success
-    | Failure
-    | FailureWithFormat of (Format.formatter -> unit)
 
   let empty =
     {
@@ -82,17 +124,7 @@ open Reporter
 
 let run_ex fmt ctx (example : Domain.example) =
   start_example example.name fmt ctx (fun ctx cont ->
-    try
-      example.f ();
-      cont ctx Success
-    with e ->
-      ( match e with
-        | Assertions.FormattedAssertionError pp ->
-          cont ctx (FailureWithFormat pp)
-        | exn ->
-          cont ctx
-            (FailureWithFormat (Format.dprintf "%s" (Printexc.to_string exn)))
-      )
+    ExampleRunner.SyncRunner.run example.f ctx cont
   )
 ;;
 
