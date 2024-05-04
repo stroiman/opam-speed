@@ -50,14 +50,14 @@ open ExampleRunner
 module Reporter = struct
   type end_test = unit
 
-  type test_result = {
+  type suite_result = {
     success: bool;
     print_break: bool;
     no_of_failing_examples: int;
     no_of_passing_examples: int;
   }
 
-  type t = test_result
+  type t = suite_result
 
   let empty =
     {
