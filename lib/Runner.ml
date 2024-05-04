@@ -1,13 +1,9 @@
-(* module type EXAMPLE = sig *)
-(*   type context *)
-(*   type test_result *)
-(*   type test_function = context -> test_result *)
-(**)
-(*   type example = { *)
-(*     name: string; *)
-(*     f: test_function; *)
-(*   } *)
-(* end *)
+type suite_result = {
+  success: bool;
+  print_break: bool;
+  no_of_failing_examples: int;
+  no_of_passing_examples: int;
+}
 
 module ExampleRunner = struct
   type test_outcome =
@@ -44,13 +40,6 @@ end
 open ExampleRunner
 
 module Reporter = struct
-  type suite_result = {
-    success: bool;
-    print_break: bool;
-    no_of_failing_examples: int;
-    no_of_passing_examples: int;
-  }
-
   type t = suite_result
 
   let empty_suite_result =
