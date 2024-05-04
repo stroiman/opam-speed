@@ -15,6 +15,7 @@ depends: [
   "ocolor"
   "ppxlib"
   "base"
+  "lwt"
   "odoc" {with-doc}
 ]
 build: [
