@@ -63,6 +63,16 @@ module Reporter = struct
   ;;
 
   let is_success { success; _ } = success
+end
+
+open Reporter
+
+module Make
+    (D : Dsl.DOMAIN)
+    (Runner : ExampleRunner.EXAMPLE_RUNNER
+              with type test_function = D.test_function) =
+struct
+  open D
 
   let start_group name fmt ctx run cont =
     let print_break =
@@ -112,16 +122,6 @@ module Reporter = struct
       cont outcome
     )
   ;;
-end
-
-open Reporter
-
-module Make
-    (D : Dsl.DOMAIN)
-    (Runner : ExampleRunner.EXAMPLE_RUNNER
-              with type test_function = D.test_function) =
-struct
-  open D
 
   let run_ex fmt ctx (example : D.example) =
     start_example example.name fmt ctx (fun ctx cont ->
