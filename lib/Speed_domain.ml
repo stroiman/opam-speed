@@ -84,10 +84,7 @@ module MakeFunctions (D : DOMAIN) = struct
       has_focused= false;
     }
 
-  (* D.empty *)
-  let make_suite ?name ?(metadata = []) () =
-    { name; child_groups= []; metadata; examples= []; has_focused= false }
-
+  let make_suite ?name ?(metadata = []) () = { empty with name; metadata }
   let make name = make_suite ~name ()
 
   let add_example ?(focus = false) ?(metadata = []) name f = function

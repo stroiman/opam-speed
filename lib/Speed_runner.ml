@@ -6,14 +6,55 @@ type metadata = Speed_metadata.t
 
 type suite_result = {
   success: bool;
-  print_break: bool;
   no_of_failing_examples: int;
   no_of_passing_examples: int;
+  pp: (Format.formatter -> unit) option;
 }
 
 let ( >> ) f g x = g (f x)
 
 type 'a continuation = (suite_result -> 'a) -> 'a
+
+let fst (x, _) = x
+
+let print_and_drop ~pb fmt s =
+  ( match s.pp with
+    | None -> ()
+    | Some pp ->
+      if pb then Format.pp_print_cut fmt ();
+      pp fmt
+  );
+  { s with pp= None }
+
+let empty_suite_result =
+  {
+    success= true;
+    no_of_failing_examples= 0;
+    no_of_passing_examples= 0;
+    pp= None;
+  }
+
+let join_result r1 r2 =
+  {
+    success= r1.success && r2.success;
+    no_of_failing_examples=
+      r1.no_of_failing_examples + r2.no_of_failing_examples;
+    no_of_passing_examples=
+      r1.no_of_passing_examples + r2.no_of_passing_examples;
+    pp=
+      ( match r1.pp, r2.pp with
+        | Some x, Some y ->
+          Some
+            (fun fmt ->
+              x fmt;
+              Format.pp_print_cut fmt ();
+              y fmt
+            )
+        | Some x, None -> Some x
+        | None, Some y -> Some y
+        | _ -> None
+      );
+  }
 
 module ExampleRunner = struct
   type test_outcome =
@@ -23,32 +64,44 @@ module ExampleRunner = struct
 
   module type EXAMPLE_RUNNER = sig
     type test_function
-    type 'b cont_result
-    type ('a, 'b) cont = 'a -> test_outcome -> 'b cont_result
+    type cont_result
+    type cont = test_outcome -> cont_result
 
-    val return : 'b -> 'b cont_result
-    val run : test_function -> 'a -> ('a, 'b) cont -> 'b cont_result
-    val wait : 'b cont_result -> 'b
+    val return : suite_result -> cont_result
+
+    val to_callback
+      :  cont_result ->
+      (suite_result -> cont_result) ->
+      cont_result
+
+    val run : test_function -> cont -> cont_result
+    val wait : cont_result -> suite_result
+    val join : cont_result -> cont_result -> cont_result
+    val bind : (suite_result -> cont_result) -> cont_result -> cont_result
+    val map : (suite_result -> suite_result) -> cont_result -> cont_result
   end
 
   module SyncRunner = struct
     type test_function = unit Domain.Sync.test_function
-    type ('a, 'b) cont = 'a -> test_outcome -> 'b
-    type 'b cont_result = 'b
+    type cont_result = suite_result
+    type cont = test_outcome -> cont_result
 
     let wait x = x
     let return = Fun.id
+    let join = join_result
+    let bind f x = f x
+    let to_callback x f = f x
+    let map f x = f x
 
-    let run (f : test_function) ctx cont =
+    let run (f : test_function) cont =
       try
         f { metadata= []; subject= () };
-        cont ctx Success
+        cont Success
       with e ->
         ( match e with
-          | Assertions.FormattedAssertionError pp ->
-            cont ctx (FailureWithFormat pp)
+          | Assertions.FormattedAssertionError pp -> cont (FailureWithFormat pp)
           | exn ->
-            cont ctx
+            cont
               (FailureWithFormat
                  (Format.dprintf "@{<orange>%s@}" (Printexc.to_string exn))
               )
@@ -57,22 +110,33 @@ module ExampleRunner = struct
 
   module LwtRunner = struct
     type test_function = unit Domain.test_input -> unit Lwt.t
-    type ('a, 'b) cont = 'a -> test_outcome -> 'b Lwt.t
-    type 'b cont_result = 'b Lwt.t
+    type cont = test_outcome -> suite_result Lwt.t
+    type cont_result = suite_result Lwt.t
 
     let wait x = Lwt_main.run x
     let return = Lwt.return
+    let bind f x = Lwt.bind x f
 
-    let run (f : test_function) (ctx : 'a) (cont : ('a, 'b) cont) : 'b Lwt.t =
+    let join a b =
+      let%lwt r1 = a in
+      let%lwt r2 = b in
+      Lwt.return @@ join_result r1 r2
+
+    let map f x = x |> Lwt.map f
+
+    let to_callback x f =
+      let%lwt v = x in
+      f v
+
+    let run (f : test_function) cont =
       try%lwt
         let%lwt _ = f { metadata= []; subject= () } in
-        cont ctx Success
+        cont Success
       with e ->
         ( match e with
-          | Assertions.FormattedAssertionError pp ->
-            cont ctx (FailureWithFormat pp)
+          | Assertions.FormattedAssertionError pp -> cont (FailureWithFormat pp)
           | exn ->
-            cont ctx
+            cont
               (FailureWithFormat (Format.dprintf "%s" (Printexc.to_string exn)))
         )
   end
@@ -83,18 +147,8 @@ open ExampleRunner
 module Reporter = struct
   type t = suite_result
 
-  let empty_suite_result =
-    {
-      success= true;
-      print_break= false;
-      no_of_failing_examples= 0;
-      no_of_passing_examples= 0;
-    }
-
   let is_success { success; _ } = success
 end
-
-open Reporter
 
 module Make
     (D : Domain.DOMAIN)
@@ -131,110 +185,137 @@ struct
     | Child { child; setup } -> Child { setup; child= filter_suite child }
     | Context { child } -> Context { child= filter_suite child }
 
-  let start_group name fmt ctx run cont =
-    let print_break =
-      match name with
-      | None -> ctx.print_break
-      | Some n ->
-        if ctx.print_break then Format.pp_print_cut fmt ();
-        Format.fprintf fmt "@[<v2>@{<bold>•@} %s" n;
-        true
-    in
-    run { ctx with print_break } (fun ctx ->
-      if Option.is_some name then Format.fprintf fmt "@]";
+  type so = string option [@@deriving show]
+
+  let start_group name print_break_after fmt ctx run cont =
+    ( match name with
+      | None -> ()
+      | Some n -> Format.fprintf fmt "@[<v2>@{<bold>•@} %s@," n
+    );
+    run ctx (fun ctx ->
+      if Option.is_some name
+      then (
+        Format.fprintf fmt "@]";
+        if print_break_after then Format.fprintf fmt "@,"
+      );
       ctx |> cont
     )
 
-  let start_example name fmt ctx run cont =
-    if ctx.print_break then Format.fprintf fmt "@,";
-    let cont ctx result =
-      Format.pp_open_vbox fmt 2;
+  let start_example name run cont =
+    let continue_from_example_result result =
       let outcome =
-        (* Printf.printf "\nFormat output %s" name; *)
         match result with
         | Success ->
-          Format.fprintf fmt "@{<green>✔@} %s" name;
           {
-            ctx with
-            no_of_passing_examples= ctx.no_of_passing_examples + 1;
-            print_break= true;
+            empty_suite_result with
+            no_of_passing_examples=
+              empty_suite_result.no_of_passing_examples + 1;
+            pp= Some (Format.dprintf "@{<green>✔@} %s" name);
           }
         | Failure ->
-          Format.fprintf fmt "@{<red>✘@} %s" name;
           {
-            ctx with
+            empty_suite_result with
             success= false;
-            print_break= true;
-            no_of_failing_examples= ctx.no_of_failing_examples + 1;
+            no_of_failing_examples=
+              empty_suite_result.no_of_failing_examples + 1;
+            pp= Some (Format.dprintf "@{<red>✘@} %s" name);
           }
         | FailureWithFormat pp ->
-          Format.fprintf fmt "@{<red>✘@} %s" name;
-          Format.fprintf fmt "@,%t" pp;
           {
-            ctx with
+            empty_suite_result with
             success= false;
-            print_break= true;
-            no_of_failing_examples= ctx.no_of_failing_examples + 1;
+            no_of_failing_examples=
+              empty_suite_result.no_of_failing_examples + 1;
+            pp=
+              Some
+                (fun fmt ->
+                  Format.fprintf fmt "@{<red>✘@} %s" name;
+                  Format.fprintf fmt "@,%t" pp
+                );
           }
       in
-      Format.pp_close_box fmt ();
       cont outcome
     in
-    run ctx cont
+    run continue_from_example_result
 
   let rec run_setup : 'b. metadata list -> (unit, 'b) setup_stack -> 'b =
     fun metadata -> function
     | Root f -> f Domain.TestInput.{ metadata; subject= () }
     | Stack (f, g) -> g { metadata; subject= run_setup metadata f }
 
-  let run_ex fmt ctx (example : 'a D.example) metadata setups =
+  let run_ex (example : 'a D.example) metadata setups cont =
     let test_input = run_setup (example.metadata @ metadata) setups in
-    let run ctx cont =
-      Runner.run (fun d -> example.f { d with subject= test_input }) ctx cont
+    let run cont =
+      Runner.run (fun d -> example.f { d with subject= test_input }) cont
     in
 
-    start_example example.name fmt ctx run
+    start_example example.name run cont
 
   let rec run_child_suite
     : type a.
       Format.formatter ->
+      bool ->
       suite_result ->
       a D.t ->
       metadata list ->
       (unit, a) setup_stack ->
       'b continuation
     =
-    fun fmt ctx suite metadata setups cont ->
+    fun fmt print_break_after ctx suite metadata setups cont ->
     let metadata = suite.metadata @ metadata in
     match suite with
     | suite ->
-      let run_examples ctx cont =
-        let rec iter examples ctx cont =
-          match examples with
-          | [] -> cont ctx
-          | x :: xs ->
-            run_ex fmt ctx x metadata setups (fun ctx -> iter xs ctx cont)
-        in
-        iter (List.rev suite.examples) ctx cont
+      let run_examples cont =
+        suite.examples
+        |> List.rev
+        |> List.map (fun ex -> run_ex ex metadata setups Runner.return)
+        |> (function
+              | [] -> Runner.return empty_suite_result
+              | hd :: [] -> hd |> Runner.map (print_and_drop ~pb:false fmt)
+              | hd :: lst ->
+                let x =
+                  lst
+                  |> List.fold_left
+                       (fun (acc, pb) ex_result ->
+                         ( acc
+                           |> Runner.map (print_and_drop ~pb fmt)
+                           |> Runner.join ex_result,
+                           true )
+                       )
+                       (hd, false)
+                  |> fst
+                in
+                x |> Runner.map (print_and_drop ~pb:true fmt)
+             )
+        |> Runner.bind cont
       in
-
-      start_group suite.name fmt ctx
+      start_group suite.name print_break_after fmt ctx
         (fun ctx cont ->
-          let cont ctx = run_examples ctx cont in
-          let rec iter groups ctx cont =
+          let cont ctx = run_examples (fun r -> cont @@ join_result r ctx) in
+          let print_break_after = List.length suite.examples > 0 in
+          let rec iter groups ctx =
             match groups with
             | [] -> cont ctx
+            | Child { child; setup= child_setup } :: [] ->
+              let setups = Stack (setups, child_setup) in
+              run_child_suite fmt print_break_after ctx child metadata setups
+                cont
+            | Context { child } :: [] ->
+              run_child_suite fmt print_break_after ctx child metadata setups
+                cont
             | Child { child; setup= child_setup } :: xs ->
               let setups = Stack (setups, child_setup) in
-              run_child_suite fmt ctx child metadata setups (fun ctx ->
-                iter xs ctx cont
+              run_child_suite fmt false ctx child metadata setups (fun ctx ->
+                Format.pp_print_cut fmt ();
+                iter xs ctx
               )
             | Context { child } :: xs ->
-              run_child_suite fmt ctx child metadata setups (fun ctx ->
-                iter xs ctx cont
+              run_child_suite fmt false ctx child metadata setups (fun ctx ->
+                Format.pp_print_cut fmt ();
+                iter xs ctx
               )
           in
-          iter (List.rev suite.child_groups) ctx cont
+          iter (List.rev suite.child_groups) ctx
         )
         cont
 
@@ -246,13 +327,16 @@ struct
       Format.fprintf fmt "@[<v>";
       let filter = filter || suite.has_focused in
       let suite = if filter then filter_suite s else s in
-      run_child_suite fmt ctx suite []
-        (Root (fun _ -> ()))
-        (fun result ->
-          Format.pp_close_box fmt ();
-          Format.pp_print_flush fmt ();
-          cont result
-        )
+      let x =
+        run_child_suite fmt false ctx suite []
+          (Root (fun _ -> ()))
+          (fun result ->
+            Format.pp_close_box fmt ();
+            Format.pp_print_flush fmt ();
+            cont result
+          )
+      in
+      x
 
   let wait = Runner.wait
   let run_suite_return ?fmt suite = run_suite ?fmt suite Runner.return
@@ -299,9 +383,10 @@ let run_suites ~fmt sync_suite lwt_suite =
     SyncRunner.has_focused sync_suite || LwtRunner.has_focused lwt_suite
   in
   Lwt_main.run
-    (SyncRunner.run_suite ~fmt ~filter:has_focused sync_suite (fun ctx ->
-       LwtRunner.run_suite ~fmt ~ctx ~filter:has_focused lwt_suite Lwt.return
-     )
+    (let ctx =
+       SyncRunner.run_suite ~fmt ~filter:has_focused sync_suite Fun.id
+     in
+     LwtRunner.run_suite ~fmt ~ctx ~filter:has_focused lwt_suite Lwt.return
     )
 
 (** This runs the test suite and exits the program. If the test suite is

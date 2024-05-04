@@ -7,13 +7,17 @@ open Null_formatter;;
 root_context "Microtask runner" (fun _ ->
   context "Counting no of failing tests" (fun _ ->
     test "One failing test should result in fail count of 1" (fun _ ->
-      let suite = Domain.empty |> add_failing_example |> add_passing_example in
+      let suite =
+        Domain.make_suite () |> add_failing_example |> add_passing_example
+      in
       let result = run_suite ~fmt suite |> get_no_of_failing_examples in
       expect result @@ equal_int 1
     );
 
     test "Two failing tests should result in fail count of 2" (fun _ ->
-      let suite = Domain.empty |> add_failing_example |> add_failing_example in
+      let suite =
+        Domain.make_suite () |> add_failing_example |> add_failing_example
+      in
       let result = run_suite ~fmt suite |> get_no_of_failing_examples in
       expect result @@ equal_int 2
     )
@@ -32,7 +36,7 @@ root_context "Microtask runner" (fun _ ->
   context "Running nested contexts" (fun _ ->
     test "Should run tests inside groups" (fun _ ->
       let suite =
-        Domain.empty
+        Domain.make_suite ()
         |> add_child_group (add_passing_example >> add_passing_example)
         |> add_child_group (add_passing_example >> add_failing_example)
       in
@@ -43,7 +47,7 @@ root_context "Microtask runner" (fun _ ->
 
     test "Should print the group name in output" (fun _ ->
       let suite =
-        Domain.empty
+        Domain.make_suite ()
         |> add_child_group ~name:"Grp 1" (add_passing_example ~name:"Ex")
         |> add_child_group ~name:"Grp 2" (add_passing_example ~name:"Ex")
       in
@@ -51,6 +55,20 @@ root_context "Microtask runner" (fun _ ->
       let fmt = make_ref_string_printer output in
       run_suite ~fmt suite |> ignore;
       expect !output @@ equal_string "• Grp 1\n  ✔ Ex\n• Grp 2\n  ✔ Ex"
+    );
+
+    test "Should print a break between a child and an example" (fun _ ->
+      let suite =
+        Domain.make_suite ()
+        |> add_child_group ~name:"Grp 1" (add_passing_example ~name:"Ex 1")
+        |> add_child_group ~name:"Grp 2" (add_passing_example ~name:"Ex 2")
+        |> add_passing_example ~name:"Ex 3"
+      in
+      let output = ref "" in
+      let fmt = make_ref_string_printer output in
+      run_suite ~fmt suite |> ignore;
+      expect !output
+      @@ equal_string "• Grp 1\n  ✔ Ex 1\n• Grp 2\n  ✔ Ex 2\n✔ Ex 3"
     )
   )
 )

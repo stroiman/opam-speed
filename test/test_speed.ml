@@ -21,17 +21,25 @@ root_context "Test outcome"
     test "is_success should return success=true when test case doesn't raise"
       [%f_
         expect
-          (empty |> addExample passing_test |> run_suite ~fmt |> is_success)
+          (make_suite ()
+           |> addExample passing_test
+           |> run_suite ~fmt
+           |> is_success
+          )
           be_true];
     test "is_success should return success=false when test case raises"
       [%f_
         expect
-          (empty |> addExample failing_test |> run_suite ~fmt |> is_success)
+          (make_suite ()
+           |> addExample failing_test
+           |> run_suite ~fmt
+           |> is_success
+          )
           be_false];
     test "should print exception message if test throes" (fun _ ->
       let fmt, get_string = make_string_printer () in
       let suite =
-        empty |> addExample (fun _ -> failwith "error message from test")
+        make_suite () |> addExample (fun _ -> failwith "error message from test")
       in
       let _ = run_suite ~fmt suite in
       get_string () |> should @@ contain "error message from test"
@@ -41,7 +49,7 @@ root_context "Test outcome"
       let test2_executed = ref false in
       let lwt_suite =
         Domain.LwtDomain.(
-          empty
+          make_suite ()
           |> add_example "1" (fun _ ->
             test1_executed := true;
             Lwt.return ()
@@ -50,7 +58,7 @@ root_context "Test outcome"
       in
       let sync_suite =
         Domain.Sync.(
-          empty
+          make_suite ()
           |> add_example "2" (fun _ ->
             test2_executed := true;
             ()
