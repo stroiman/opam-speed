@@ -2,6 +2,25 @@ module type TEST_RESULT = sig
   type t
 end
 
+module type DOMAIN = sig
+  type context
+  type test_result
+  type test_function = context -> test_result
+
+  type example = {
+    name: string;
+    f: test_function;
+  }
+
+  type t = {
+    name: string option;
+    child_groups: t list;
+    examples: example list;
+  }
+
+  val empty : t
+end
+
 module Make (R : TEST_RESULT) = struct
   type context = unit
   type test_result = R.t

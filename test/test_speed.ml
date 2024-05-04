@@ -1,8 +1,11 @@
-(* Important, if any is commented out, tests will not run *)
+(* Other tests, if any is commented out, tests will not _necessarily_ run *)
 open! Effect_dsl_test
 open! Assertions_test
 open! Dsl_test
 open! Runner_test
+open! Lwt_runner_test
+
+(* Used modules *)
 open Speed
 open Dsl
 open Speed.Domain
