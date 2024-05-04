@@ -4,8 +4,7 @@ module type ROOT_SUITE = sig
   val root_suite : t ref
 end
 
-module Make (D : Domain.DOMAIN) (RootSuite : ROOT_SUITE with type t = D.t) =
-struct
+module Make (D : Dsl.DOMAIN) (RootSuite : ROOT_SUITE with type t = D.t) = struct
   open D
   open Effect
 

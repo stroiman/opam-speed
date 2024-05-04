@@ -17,7 +17,7 @@ module type DOMAIN = sig
   val empty : t
 end
 
-module Make (T : Domain.DOMAIN) = struct
+module Make (T : DOMAIN) = struct
   open T
 
   type t = T.t
