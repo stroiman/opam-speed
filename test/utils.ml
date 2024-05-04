@@ -2,10 +2,7 @@ exception TestError
 
 let passing_test () = ()
 let failing_test () = raise TestError
-
-let addExample ?(name = "_anonymous test_") f c =
-  Speed.Domain.{ c with examples= { name; f } :: c.examples }
-;;
+let addExample ?(name = "_anonymous test_") = Speed.Domain.add_example name
 
 let add_child_group ?name spec ctx =
   Speed.Domain.
@@ -35,10 +32,11 @@ let make_string_printer () =
   printer, get_string
 ;;
 
+let make_string_ref_formatter = make_ref_string_printer
+
 let get_printed_string pp =
-  let s = ref "" in
-  let fmt = make_ref_string_printer s in
+  let fmt, get = make_string_printer () in
   pp fmt;
   Format.pp_print_flush fmt ();
-  !s
+  get ()
 ;;

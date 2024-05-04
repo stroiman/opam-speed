@@ -23,6 +23,16 @@ module Make (R : TEST_RESULT) = struct
   end
 
   let empty = Context.empty
+
+  let add_example name f ctx =
+    { ctx with examples= { name; f } :: ctx.examples }
+  ;;
+
+  let make name = { empty with name= Some name }
+
+  let add_context name f ctx =
+    { ctx with child_groups= f (make name) :: ctx.child_groups }
+  ;;
 end
 
 module SyncTestResult = struct
