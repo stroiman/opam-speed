@@ -73,19 +73,21 @@ let contain substring actual =
 let run_matcher matcher actual = matcher actual
 
 let expect ?name actual assertion =
+  let print_header f =
+    Format.fprintf f "@[<v2>@{<bold>Assertion error@}";
+    match name with
+    | Some n -> Format.fprintf f ": %s" n
+    | None -> ()
+  in
   match assertion actual with
   | Ok _ -> ()
   | Error (`AssertionErrorWithFormat pp) ->
     let errorFormat f =
-      Format.fprintf f "@[<v2>@{<bold>Assertion error@}";
-      ( match name with
-        | Some n -> Format.fprintf f ": %s" n
-        | None -> ()
-      );
+      print_header f;
       Format.fprintf f "@,%t@]" pp
     in
     raise (FormattedAssertionError errorFormat)
-  | Error _ -> raise AssertionError
+  | Error _ -> raise (FormattedAssertionError print_header)
 ;;
 
 let should ?name assertion actual = expect ?name actual assertion
