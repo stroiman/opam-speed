@@ -1,15 +1,13 @@
-open Domain
-
-module type EXAMPLE = sig
-  type context
-  type test_result
-  type test_function = context -> test_result
-
-  type example = {
-    name: string;
-    f: test_function;
-  }
-end
+(* module type EXAMPLE = sig *)
+(*   type context *)
+(*   type test_result *)
+(*   type test_function = context -> test_result *)
+(**)
+(*   type example = { *)
+(*     name: string; *)
+(*     f: test_function; *)
+(*   } *)
+(* end *)
 
 module ExampleRunner = struct
   type test_outcome =
@@ -19,15 +17,13 @@ module ExampleRunner = struct
 
   module type EXAMPLE_RUNNER = sig
     type test_function
-    type test_result
-    type 'a cont = (test_result -> 'a) -> 'a
+    (* type ('a, 'b) cont = 'a -> (test_outcome -> 'b) -> 'b *)
 
-    val run : test_function -> 'a cont -> 'a
+    val run : test_function -> 'a -> ('a -> test_outcome -> 'b) -> 'b
   end
 
   module SyncRunner = struct
     type test_function = Domain.Sync.test_function
-    type test_result = Domain.Sync.test_result
 
     let run f ctx cont =
       try
@@ -48,8 +44,6 @@ end
 open ExampleRunner
 
 module Reporter = struct
-  type end_test = unit
-
   type suite_result = {
     success: bool;
     print_break: bool;
@@ -59,7 +53,7 @@ module Reporter = struct
 
   type t = suite_result
 
-  let empty =
+  let empty_suite_result =
     {
       success= true;
       print_break= false;
@@ -122,64 +116,75 @@ end
 
 open Reporter
 
-let run_ex fmt ctx (example : Domain.example) =
-  start_example example.name fmt ctx (fun ctx cont ->
-    ExampleRunner.SyncRunner.run example.f ctx cont
-  )
-;;
+module Make
+    (D : Dsl.DOMAIN)
+    (Runner : ExampleRunner.EXAMPLE_RUNNER
+              with type test_function = D.test_function) =
+struct
+  open D
 
-let rec run_child_suite fmt ctx suite cont =
-  let run_examples ctx cont =
-    List.fold_left
-      (fun cont ex ctx -> run_ex fmt ctx ex cont)
-      cont suite.examples ctx
-  in
+  let run_ex fmt ctx (example : D.example) =
+    start_example example.name fmt ctx (fun ctx cont ->
+      Runner.run example.f ctx cont
+    )
+  ;;
 
-  start_group suite.name fmt ctx
-    (fun ctx cont ->
-      let cont ctx = run_examples ctx cont in
+  let rec run_child_suite fmt ctx suite cont =
+    let run_examples ctx cont =
       List.fold_left
-        (fun cont grp ctx -> run_child_suite fmt ctx grp cont)
-        cont suite.child_groups ctx
-    )
-    cont
-;;
+        (fun cont ex ctx -> run_ex fmt ctx ex cont)
+        cont suite.examples ctx
+    in
 
-let run_suite ?(fmt = Ocolor_format.raw_std_formatter) suite =
-  Format.fprintf fmt "@[<v>";
-  let ctx = empty in
-  let result = run_child_suite fmt ctx suite Fun.id in
-  Format.pp_close_box fmt ();
-  Format.pp_print_flush fmt ();
-  result
-;;
+    start_group suite.name fmt ctx
+      (fun ctx cont ->
+        let cont ctx = run_examples ctx cont in
+        List.fold_left
+          (fun cont grp ctx -> run_child_suite fmt ctx grp cont)
+          cont suite.child_groups ctx
+      )
+      cont
+  ;;
 
-let is_success { success; _ } = success
-let get_no_of_failing_examples x = x.no_of_failing_examples
-let get_no_of_passing_examples x = x.no_of_passing_examples
+  let run_suite ?(fmt = Ocolor_format.raw_std_formatter) suite =
+    Format.fprintf fmt "@[<v>";
+    let ctx = empty_suite_result in
+    let result = run_child_suite fmt ctx suite Fun.id in
+    Format.pp_close_box fmt ();
+    Format.pp_print_flush fmt ();
+    result
+  ;;
 
-(** This runs the test suite and exits the program. If the test suite is
-    successful, it will exit with exit code zero, otherwise it will exit with
-    exit code 1. *)
-let run_main suite =
-  let fmt = Ocolor_format.raw_std_formatter in
-  let result = run_suite suite in
-  let failing = get_no_of_failing_examples result in
-  let passing = get_no_of_passing_examples result in
-  Format.fprintf fmt "\n@,@[<v2>SUMMARY: ";
-  let exit_code =
-    if is_success result
-    then (
-      Format.fprintf fmt "@{<green>PASS@}";
-      0
-    )
-    else (
-      Format.fprintf fmt "@{<red>FAIL@}";
-      1
-    )
-  in
-  Format.fprintf fmt "@,Passing tests: %d@,Failing tests: %d@,@]" passing
-    failing;
-  Format.pp_print_flush fmt ();
-  exit exit_code
-;;
+  let is_success { success; _ } = success
+  let get_no_of_failing_examples x = x.no_of_failing_examples
+  let get_no_of_passing_examples x = x.no_of_passing_examples
+
+  (** This runs the test suite and exits the program. If the test suite is
+      successful, it will exit with exit code zero, otherwise it will exit with
+      exit code 1. *)
+  let run_main suite =
+    let fmt = Ocolor_format.raw_std_formatter in
+    let result = run_suite suite in
+    let failing = get_no_of_failing_examples result in
+    let passing = get_no_of_passing_examples result in
+    Format.fprintf fmt "\n@,@[<v2>SUMMARY: ";
+    let exit_code =
+      if is_success result
+      then (
+        Format.fprintf fmt "@{<green>PASS@}";
+        0
+      )
+      else (
+        Format.fprintf fmt "@{<red>FAIL@}";
+        1
+      )
+    in
+    Format.fprintf fmt "@,Passing tests: %d@,Failing tests: %d@,@]" passing
+      failing;
+    Format.pp_print_flush fmt ();
+    exit exit_code
+  ;;
+end
+
+module SyncRunner = Make (Domain.Sync) (ExampleRunner.SyncRunner)
+include SyncRunner
