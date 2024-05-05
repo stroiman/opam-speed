@@ -153,17 +153,23 @@ struct
 
   let rec run_child_suite fmt ctx suite cont =
     let run_examples ctx cont =
-      List.fold_left
-        (fun cont ex ctx -> run_ex fmt ctx ex cont)
-        cont suite.examples ctx
+      let rec iter examples ctx cont =
+        match examples with
+        | [] -> cont ctx
+        | x :: xs -> run_ex fmt ctx x (fun ctx -> iter xs ctx cont)
+      in
+      iter (List.rev suite.examples) ctx cont
     in
 
     start_group suite.name fmt ctx
       (fun ctx cont ->
         let cont ctx = run_examples ctx cont in
-        List.fold_left
-          (fun cont grp ctx -> run_child_suite fmt ctx grp cont)
-          cont suite.child_groups ctx
+        let rec iter groups ctx cont =
+          match groups with
+          | [] -> cont ctx
+          | x :: xs -> run_child_suite fmt ctx x (fun ctx -> iter xs ctx cont)
+        in
+        iter (List.rev suite.child_groups) ctx cont
       )
       cont
   ;;
