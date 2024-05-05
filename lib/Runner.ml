@@ -174,9 +174,10 @@ struct
       cont
   ;;
 
-  let run_suite ?(fmt = Ocolor_format.raw_std_formatter) suite cont =
+  let run_suite ?(fmt = Ocolor_format.raw_std_formatter)
+    ?(ctx = empty_suite_result) suite cont
+    =
     Format.fprintf fmt "@[<v>";
-    let ctx = empty_suite_result in
     run_child_suite fmt ctx suite (fun result ->
       Format.pp_close_box fmt ();
       Format.pp_print_flush fmt ();
@@ -191,32 +192,34 @@ struct
   let get_no_of_failing_examples x = x.no_of_failing_examples
   let get_no_of_passing_examples x = x.no_of_passing_examples
 
+  let consume_test_result fmt result =
+    let failing = get_no_of_failing_examples result in
+    let passing = get_no_of_passing_examples result in
+    Format.fprintf fmt "\n@,@[<v2>SUMMARY: ";
+    let exit_code =
+      if is_success result
+      then (
+        Format.fprintf fmt "@{<green>PASS@}";
+        0
+      )
+      else (
+        Format.fprintf fmt "@{<red>FAIL@}";
+        1
+      )
+    in
+    Format.fprintf fmt "@,Passing tests: %d@,Failing tests: %d@,@]" passing
+      failing;
+    Format.pp_print_flush fmt ();
+    exit exit_code
+  ;;
+
   (** This runs the test suite and exits the program. If the test suite is
       successful, it will exit with exit code zero, otherwise it will exit with
       exit code 1. *)
-  let run_main suite =
-    let fmt = Ocolor_format.raw_std_formatter in
-    run_suite suite (fun result ->
-      let failing = get_no_of_failing_examples result in
-      let passing = get_no_of_passing_examples result in
-      Format.fprintf fmt "\n@,@[<v2>SUMMARY: ";
-      let exit_code =
-        if is_success result
-        then (
-          Format.fprintf fmt "@{<green>PASS@}";
-          0
-        )
-        else (
-          Format.fprintf fmt "@{<red>FAIL@}";
-          1
-        )
-      in
-      Format.fprintf fmt "@,Passing tests: %d@,Failing tests: %d@,@]" passing
-        failing;
-      Format.pp_print_flush fmt ();
-      exit exit_code
-    )
-  ;;
+  (* let run_main suite = *)
+  (*   let fmt = Ocolor_format.raw_std_formatter in *)
+  (*   run_suite ~fmt suite (consume_test_result fmt) *)
+  (* ;; *)
 end
 
 module SyncRunner = Make (Domain.Sync) (ExampleRunner.SyncRunner)
@@ -224,3 +227,20 @@ module LwtRunner = Make (Domain.LwtDomain) (ExampleRunner.LwtRunner)
 include SyncRunner
 
 let run_suite = run_suite_wait
+
+let run_suites ~fmt sync_suite lwt_suite =
+  Lwt_main.run
+    (SyncRunner.run_suite ~fmt sync_suite (fun ctx ->
+       LwtRunner.run_suite ~fmt ~ctx lwt_suite Lwt.return
+     )
+    )
+;;
+
+(** This runs the test suite and exits the program. If the test suite is
+    successful, it will exit with exit code zero, otherwise it will exit with
+    exit code 1. *)
+let run_root_suites () =
+  let fmt = Ocolor_format.raw_std_formatter in
+  let result = run_suites ~fmt !Dsl.Sync.root_suite !Dsl.LwtDsl.root_suite in
+  consume_test_result fmt result
+;;

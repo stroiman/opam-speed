@@ -43,7 +43,33 @@ root_context "Test outcome"
       let _ = run_suite ~fmt suite in
       get_string () |> should @@ contain "error message from test"
     );
+    test "Should run both sync and lwt suites" (fun _ ->
+      let test1_executed = ref false in
+      let test2_executed = ref false in
+      let lwt_suite =
+        Domain.LwtDomain.(
+          empty
+          |> add_example "1" (fun _ ->
+            test1_executed := true;
+            Lwt.return ()
+          )
+        )
+      in
+      let sync_suite =
+        Domain.Sync.(
+          empty
+          |> add_example "2" (fun _ ->
+            test2_executed := true;
+            ()
+          )
+        )
+      in
+      let result = run_suites ~fmt sync_suite lwt_suite in
+      !test1_executed |> should ~name:"Test 1" be_true;
+      !test2_executed |> should ~name:"Test 2" be_true;
+      result.no_of_passing_examples |> should (equal_int 2)
+    );
   ]
 ;;
 
-!Speed.Dsl.root_suite |> run_main
+run_root_suites ()
