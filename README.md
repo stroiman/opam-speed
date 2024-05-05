@@ -1,5 +1,7 @@
 # Speed - OCaml test runner
 
+Feeling brave, and want to try this out, [read the documentation](./DOCUMENTATION.MD)
+
 This test tool was build as I was unhappy with the current options of testing
 tools; none of them seem to match my personal philosophy.
 
