@@ -83,6 +83,7 @@ let build_suite () =
 
 (* Construct the domain, consuming the effects *)
 let suite = parser build_suite
+```
 
 ## Root suite
 
