@@ -163,7 +163,7 @@ expect "foo" (equal_string "foo")
 
 ### ppx_generator
 
-There is a ppx generator for creating matchers for parts 
+There is a ppx generator for creating matchers for partial matching a reccord.
 
 To avoid failing tests when you refactor code, a test should only be concerned
 about the single aspect it's testing. The ppx generators allow you to match just
@@ -192,4 +192,13 @@ test "New account has right email" (fun _ ->
   let account = make_account ~email:"jd@example.com" ~password:"1234" () in
   account |> should @@ match_account ~password_hash:(match_password "jd@example.coM")
 )
+```
+
+#### Dune file setup
+
+You should used `staged_pps` instead of `pps` in the dune file, having 
+`ppx_import` first in the list
+
+```
+(preprocess (staged_pps ppx_import speed.ppx_matcher))
 ```
