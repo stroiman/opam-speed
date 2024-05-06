@@ -44,6 +44,8 @@ module Make (D : Dsl.DOMAIN) (RootSuite : ROOT_SUITE with type t = D.t) = struct
     let result = run specs ctx in
     perform (Op (add_child_context result))
   ;;
+
+  let root_context name f = run_root (fun _ -> context name f)
 end
 
 module Sync = Make (Domain.Sync) (Dsl.Sync)
