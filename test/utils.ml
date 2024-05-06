@@ -1,5 +1,6 @@
 exception TestError
 
+let ( >> ) f g x = g (f x)
 let passing_test () = ()
 let failing_test () = raise TestError
 let addExample ?(name = "_anonymous test_") = Speed.Domain.add_example name

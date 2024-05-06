@@ -39,12 +39,8 @@ root_context "Microtask runner" (fun _ ->
     test "Should run tests inside groups" (fun _ ->
       let suite =
         Domain.Context.empty
-        |> add_child_group (fun x ->
-          x |> add_passing_example |> add_passing_example
-        )
-        |> add_child_group (fun x ->
-          x |> add_passing_example |> add_failing_example
-        )
+        |> add_child_group (add_passing_example >> add_passing_example)
+        |> add_child_group (add_passing_example >> add_failing_example)
       in
       let suite_result = run_suite ~fmt suite in
       expect (get_no_of_failing_examples suite_result) @@ equal_int 1;
