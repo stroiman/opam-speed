@@ -74,7 +74,7 @@ let run_matcher matcher actual = matcher actual
 
 let expect ?name actual assertion =
   let print_header f =
-    Format.fprintf f "@[<v2>@{<bold>Assertion error@}";
+    Format.fprintf f "@[<v2>@{<bold>@{<orange>Assertion error@}@}";
     match name with
     | Some n -> Format.fprintf f ": %s" n
     | None -> ()
@@ -87,7 +87,12 @@ let expect ?name actual assertion =
       Format.fprintf f "@,%t@]" pp
     in
     raise (FormattedAssertionError errorFormat)
-  | Error _ -> raise (FormattedAssertionError print_header)
+  | Error _ ->
+    let errorFormat f =
+      print_header f;
+      Format.fprintf f "@]"
+    in
+    raise (FormattedAssertionError errorFormat)
 ;;
 
 let should ?name assertion actual = expect ?name actual assertion
