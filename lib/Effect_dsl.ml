@@ -33,10 +33,7 @@ module Make (D : Dsl.DOMAIN) (RootSuite : ROOT_SUITE with type t = D.t) = struct
   let run_root f = RootSuite.root_suite := run f !RootSuite.root_suite
   let test ?focus name f = Effect.perform (Op (D.add_example ?focus name f))
   let it = test
-
-  let add_child_context child ctx =
-    { ctx with child_groups= child :: ctx.child_groups }
-  ;;
+  let add_child_context = add_child_group
 
   let context name specs =
     let ctx = { D.empty with name= Some name } in

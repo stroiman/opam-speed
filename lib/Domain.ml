@@ -38,8 +38,17 @@ module Make (R : TEST_RESULT) = struct
 
   let make name = { empty with name= Some name }
 
-  let add_context name f ctx =
-    { ctx with child_groups= f (make name) :: ctx.child_groups }
+  let add_child_group child ctx =
+    {
+      ctx with
+      child_groups= child :: ctx.child_groups;
+      has_focused= ctx.has_focused || child.has_focused;
+    }
+  ;;
+
+  let add_context name f =
+    let child_group = f (make name) in
+    add_child_group child_group
   ;;
 end
 
