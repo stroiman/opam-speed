@@ -31,8 +31,7 @@ module Make (D : Dsl.DOMAIN) (RootSuite : ROOT_SUITE with type t = D.t) = struct
 
   let parse f = run f D.empty
   let run_root f = RootSuite.root_suite := run f !RootSuite.root_suite
-  let add_test name f ctx = { ctx with examples= { name; f } :: ctx.examples }
-  let test name f = Effect.perform (Op (add_test name f))
+  let test ?focus name f = Effect.perform (Op (D.add_example ?focus name f))
   let it = test
 
   let add_child_context child ctx =

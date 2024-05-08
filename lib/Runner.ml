@@ -39,7 +39,9 @@ module ExampleRunner = struct
             cont ctx (FailureWithFormat pp)
           | exn ->
             cont ctx
-              (FailureWithFormat (Format.dprintf "%s" (Printexc.to_string exn)))
+              (FailureWithFormat
+                 (Format.dprintf "@{<orange>%s@}" (Printexc.to_string exn))
+              )
         )
     ;;
   end
@@ -94,6 +96,17 @@ module Make
 struct
   open D
 
+  let rec filter_suite suite =
+    let is_not_empty suite =
+      suite.examples |> List.length > 0 || suite.child_groups |> List.length > 0
+    in
+    let examples = suite.examples |> List.filter (fun x -> x.focus) in
+    let child_groups =
+      suite.child_groups |> List.map filter_suite |> List.filter is_not_empty
+    in
+    { suite with examples; child_groups }
+  ;;
+
   let start_group name fmt ctx run cont =
     let print_break =
       match name with
@@ -112,6 +125,7 @@ struct
   let start_example name fmt ctx run cont =
     if ctx.print_break then Format.fprintf fmt "@,";
     let cont ctx result =
+      Format.pp_open_vbox fmt 2;
       let outcome =
         (* Printf.printf "\nFormat output %s" name; *)
         match result with
@@ -140,6 +154,7 @@ struct
             no_of_failing_examples= ctx.no_of_failing_examples + 1;
           }
       in
+      Format.pp_close_box fmt ();
       cont outcome
     in
     run ctx cont
@@ -174,10 +189,12 @@ struct
       cont
   ;;
 
-  let run_suite ?(fmt = Ocolor_format.raw_std_formatter)
+  let run_suite ?(fmt = Ocolor_format.raw_std_formatter) ?(filter = false)
     ?(ctx = empty_suite_result) suite cont
     =
     Format.fprintf fmt "@[<v>";
+    let filter = filter || suite.has_focused in
+    let suite = if filter then filter_suite suite else suite in
     run_child_suite fmt ctx suite (fun result ->
       Format.pp_close_box fmt ();
       Format.pp_print_flush fmt ();
@@ -213,13 +230,14 @@ struct
     exit exit_code
   ;;
 
-  (** This runs the test suite and exits the program. If the test suite is
-      successful, it will exit with exit code zero, otherwise it will exit with
-      exit code 1. *)
   (* let run_main suite = *)
   (*   let fmt = Ocolor_format.raw_std_formatter in *)
   (*   run_suite ~fmt suite (consume_test_result fmt) *)
   (* ;; *)
+  (** This runs the test suite and exits the program. If the test suite is
+      successful, it will exit with exit code zero, otherwise it will exit with
+      exit code 1. *)
+  let has_focused suite = suite.has_focused
 end
 
 module SyncRunner = Make (Domain.Sync) (ExampleRunner.SyncRunner)
@@ -229,9 +247,12 @@ include SyncRunner
 let run_suite = run_suite_wait
 
 let run_suites ~fmt sync_suite lwt_suite =
+  let has_focused =
+    SyncRunner.has_focused sync_suite || LwtRunner.has_focused lwt_suite
+  in
   Lwt_main.run
-    (SyncRunner.run_suite ~fmt sync_suite (fun ctx ->
-       LwtRunner.run_suite ~fmt ~ctx lwt_suite Lwt.return
+    (SyncRunner.run_suite ~fmt ~filter:has_focused sync_suite (fun ctx ->
+       LwtRunner.run_suite ~fmt ~ctx ~filter:has_focused lwt_suite Lwt.return
      )
     )
 ;;

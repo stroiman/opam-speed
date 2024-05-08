@@ -9,6 +9,7 @@ module Make (R : TEST_RESULT) = struct
 
   type example = {
     name: string;
+    focus: bool;
     f: test_function;
   }
 
@@ -16,16 +17,23 @@ module Make (R : TEST_RESULT) = struct
     name: string option;
     child_groups: t list;
     examples: example list;
+    has_focused: bool;
   }
 
   module Context = struct
-    let empty = { name= None; child_groups= []; examples= [] }
+    let empty =
+      { name= None; child_groups= []; examples= []; has_focused= false }
+    ;;
   end
 
   let empty = Context.empty
 
-  let add_example name f ctx =
-    { ctx with examples= { name; f } :: ctx.examples }
+  let add_example ?(focus = false) name f ctx =
+    {
+      ctx with
+      examples= { name; focus; f } :: ctx.examples;
+      has_focused= ctx.has_focused || focus;
+    }
   ;;
 
   let make name = { empty with name= Some name }

@@ -5,6 +5,7 @@ module type DOMAIN = sig
 
   type example = {
     name: string;
+    focus: bool;
     f: test_function;
   }
 
@@ -12,9 +13,11 @@ module type DOMAIN = sig
     name: string option;
     child_groups: t list;
     examples: example list;
+    has_focused: bool;
   }
 
   val empty : t
+  val add_example : ?focus:bool -> string -> test_function -> t -> t
 end
 
 module Make (T : DOMAIN) = struct
@@ -22,7 +25,7 @@ module Make (T : DOMAIN) = struct
 
   type t = T.t
 
-  let test name f ctx = { ctx with examples= { name; f } :: ctx.examples }
+  let test = add_example
   let it = test
   let parse specs = specs |> List.fold_left (fun a b -> b a) empty
 
