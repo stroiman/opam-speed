@@ -1,5 +1,5 @@
 module Make (T : Domain.DOMAIN) = struct
-  open T
+  open Domain.MakeFunctions (T)
 
   type t = T.t
 

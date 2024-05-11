@@ -6,7 +6,7 @@ end
 
 module Make (D : Domain.DOMAIN) (RootSuite : ROOT_SUITE with type t = D.t) =
 struct
-  open D
+  open Domain.MakeFunctions (D)
   open Effect
 
   type _ Effect.t += Op : (D.t -> D.t) -> unit t
@@ -30,16 +30,13 @@ struct
     loop (fiber f) () ctx
   ;;
 
-  let parse f = run f D.empty
+  let parse f = run f @@ make_suite ()
   let run_root f = RootSuite.root_suite := run f !RootSuite.root_suite
-  let test ?focus name f = Effect.perform (Op (D.add_example ?focus name f))
+  let test ?focus name f = Effect.perform (Op (add_example ?focus name f))
   let it = test
-  let add_child_context = add_child_group
 
   let context name specs =
-    let ctx = { D.empty with name= Some name } in
-    let result = run specs ctx in
-    perform (Op (add_child_context result))
+    perform (Op (make_suite ~name () |> run specs |> add_child_group))
   ;;
 
   let root_context name f = run_root (fun _ -> context name f)
