@@ -3,8 +3,7 @@ open Speed.Effect_dsl
 open Speed.Assertions
 open Speed.Runner
 open Utils
-
-let fmt = null_formatter;;
+open Null_formatter;;
 
 root_context "Microtask runner" (fun _ ->
   context "Counting no of failing tests" (fun _ ->

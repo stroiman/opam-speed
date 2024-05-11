@@ -2,9 +2,9 @@ open Speed
 open Assertions
 open Effect_dsl
 open Utils
+open Null_formatter
 
 let pending _ = ()
-let fmt = null_formatter
 let lwt_pass () = Lwt.return ();;
 
 run_root (fun _ ->

@@ -13,8 +13,7 @@ open Speed.Domain
 open Speed.Runner
 open Speed.Assertions
 open Utils
-
-let fmt = null_formatter;;
+open Null_formatter;;
 
 root_context "Test outcome"
   [

@@ -3,8 +3,7 @@ open Assertions
 open Effect_dsl
 open Runner
 open Utils
-
-let fmt = null_formatter;;
+open Null_formatter;;
 
 root_context "Focused tests" (fun _ ->
   test "Should run focused examples"
