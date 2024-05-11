@@ -22,7 +22,7 @@ module ExampleRunner = struct
   end
 
   module SyncRunner = struct
-    type test_function = Domain.Sync.test_function
+    type test_function = unit Domain.Sync.test_function
     type ('a, 'b) cont = 'a -> test_outcome -> 'b
     type 'b cont_result = 'b
 
@@ -92,7 +92,7 @@ open Reporter
 module Make
     (D : Domain.DOMAIN)
     (Runner : ExampleRunner.EXAMPLE_RUNNER
-              with type test_function = D.test_function) =
+              with type test_function = unit D.test_function) =
 struct
   open D
 
@@ -160,7 +160,7 @@ struct
     run ctx cont
   ;;
 
-  let run_ex fmt ctx (example : D.example) =
+  let run_ex fmt ctx (example : unit D.example) =
     let run ctx cont = Runner.run example.f ctx cont in
 
     start_example example.name fmt ctx run

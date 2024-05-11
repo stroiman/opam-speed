@@ -4,16 +4,16 @@ module type ROOT_SUITE = sig
   val root_suite : t ref
 end
 
-module Make (D : Domain.DOMAIN) (RootSuite : ROOT_SUITE with type t = D.t) =
+module Make (D : Domain.DOMAIN) (RootSuite : ROOT_SUITE with type t = unit D.t) =
 struct
   open Domain.MakeFunctions (D)
   open Effect
 
-  type _ Effect.t += Op : (D.t -> D.t) -> unit t
+  type _ Effect.t += Op : (unit D.t -> unit D.t) -> unit t
 
-  let run (f : unit -> unit) (ctx : D.t) =
+  let run (f : unit -> unit) (ctx : unit D.t) =
     let open Effect.Shallow in
-    let rec loop : type a. (a, unit) continuation -> a -> D.t -> D.t =
+    let rec loop : type a. (a, unit) continuation -> a -> unit D.t -> unit D.t =
       fun k v ctx ->
       continue_with k v
         {
