@@ -1,3 +1,27 @@
+module type DOMAIN = sig
+  type context
+  type test_result
+  type test_function = context -> test_result
+
+  type example = {
+    name: string;
+    focus: bool;
+    f: test_function;
+  }
+
+  type t = {
+    name: string option;
+    child_groups: t list;
+    examples: example list;
+    has_focused: bool;
+  }
+
+  val empty : t
+  val add_example : ?focus:bool -> string -> test_function -> t -> t
+  val add_context : string -> (t -> t) -> t -> t
+  val add_child_group : t -> t -> t
+end
+
 module type TEST_RESULT = sig
   type t
 end

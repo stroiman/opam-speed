@@ -90,7 +90,7 @@ end
 open Reporter
 
 module Make
-    (D : Dsl.DOMAIN)
+    (D : Domain.DOMAIN)
     (Runner : ExampleRunner.EXAMPLE_RUNNER
               with type test_function = D.test_function) =
 struct
