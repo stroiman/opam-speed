@@ -36,7 +36,7 @@ struct
   let it = test
 
   let context name specs =
-    perform (Op (make_suite ~name () |> run specs |> add_child_group))
+    perform (Op (make name |> run specs |> add_child_group))
   ;;
 
   let root_context name f = run_root (fun _ -> context name f)
