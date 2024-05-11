@@ -39,13 +39,12 @@ module Make (R : TEST_RESULT) = struct
     has_focused: bool;
   }
 
-  module Context = struct
-    let empty =
-      { name= None; child_groups= []; examples= []; has_focused= false }
-    ;;
-  end
-
-  let empty = Context.empty
+  type gen_context =
+    | Create : {
+        context: 'a t;
+        fixture: unit -> 'a;
+      }
+        -> gen_context
 end
 
 module MakeFunctions (D : DOMAIN) = struct

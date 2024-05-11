@@ -5,13 +5,14 @@ let passing_test () = ()
 let failing_test () = raise TestError
 let addExample ?(name = "_anonymous test_") = Speed.Domain.add_example name
 
-let add_child_group ?name spec ctx =
-  Speed.Domain.
-    {
-      ctx with
-      child_groups= spec { Context.empty with name } :: ctx.child_groups;
-    }
+let add_child_group ?name spec =
+  Speed.Domain.(add_child_group (make_suite ?name () |> spec))
 ;;
+
+(* { *)
+(*   ctx with *)
+(*   child_groups= spec { Context.empty with name } :: ctx.child_groups; *)
+(* } *)
 
 let add_failing_example ?name = addExample ?name failing_test
 let add_passing_example ?name = addExample ?name passing_test

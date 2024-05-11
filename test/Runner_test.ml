@@ -9,17 +9,13 @@ let fmt = null_formatter;;
 root_context "Microtask runner" (fun _ ->
   context "Counting no of failing tests" (fun _ ->
     test "One failing test should result in fail count of 1" (fun _ ->
-      let suite =
-        Domain.Context.empty |> add_failing_example |> add_passing_example
-      in
+      let suite = Domain.empty |> add_failing_example |> add_passing_example in
       let result = run_suite ~fmt suite |> get_no_of_failing_examples in
       expect result @@ equal_int 1
     );
 
     test "Two failing tests should result in fail count of 2" (fun _ ->
-      let suite =
-        Domain.Context.empty |> add_failing_example |> add_failing_example
-      in
+      let suite = Domain.empty |> add_failing_example |> add_failing_example in
       let result = run_suite ~fmt suite |> get_no_of_failing_examples in
       expect result @@ equal_int 2
     )
@@ -38,7 +34,7 @@ root_context "Microtask runner" (fun _ ->
   context "Running nested contexts" (fun _ ->
     test "Should run tests inside groups" (fun _ ->
       let suite =
-        Domain.Context.empty
+        Domain.empty
         |> add_child_group (add_passing_example >> add_passing_example)
         |> add_child_group (add_passing_example >> add_failing_example)
       in
@@ -49,7 +45,7 @@ root_context "Microtask runner" (fun _ ->
 
     test "Should print the group name in output" (fun _ ->
       let suite =
-        Domain.Context.empty
+        Domain.empty
         |> add_child_group ~name:"Grp 1" (add_passing_example ~name:"Ex")
         |> add_child_group ~name:"Grp 2" (add_passing_example ~name:"Ex")
       in
