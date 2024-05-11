@@ -1,5 +1,4 @@
 module type DOMAIN = sig
-  type context
   type test_result
   type 'a test_function = 'a -> test_result
 
@@ -22,7 +21,6 @@ module type TEST_RESULT = sig
 end
 
 module Make (R : TEST_RESULT) = struct
-  type context = unit
   type test_result = R.t
   type 'a test_function = 'a -> test_result
 
