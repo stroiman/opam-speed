@@ -96,15 +96,18 @@ module Make
 struct
   open D
 
-  let rec filter_suite suite =
-    let is_not_empty suite =
-      suite.examples |> List.length > 0 || suite.child_groups |> List.length > 0
-    in
-    let examples = suite.examples |> List.filter (fun x -> x.focus) in
-    let child_groups =
-      suite.child_groups |> List.map filter_suite |> List.filter is_not_empty
-    in
-    { suite with examples; child_groups }
+  let rec filter_suite = function
+    | Context suite ->
+      let is_not_empty = function
+        | Context suite ->
+          suite.examples |> List.length > 0
+          || suite.child_groups |> List.length > 0
+      in
+      let examples = suite.examples |> List.filter (fun x -> x.focus) in
+      let child_groups =
+        suite.child_groups |> List.map filter_suite |> List.filter is_not_empty
+      in
+      Context { suite with examples; child_groups }
   ;;
 
   let start_group name fmt ctx run cont =
@@ -167,39 +170,43 @@ struct
   ;;
 
   let rec run_child_suite fmt ctx suite cont =
-    let run_examples ctx cont =
-      let rec iter examples ctx cont =
-        match examples with
-        | [] -> cont ctx
-        | x :: xs -> run_ex fmt ctx x (fun ctx -> iter xs ctx cont)
-      in
-      iter (List.rev suite.examples) ctx cont
-    in
-
-    start_group suite.name fmt ctx
-      (fun ctx cont ->
-        let cont ctx = run_examples ctx cont in
-        let rec iter groups ctx cont =
-          match groups with
+    match suite with
+    | Context suite ->
+      let run_examples ctx cont =
+        let rec iter examples ctx cont =
+          match examples with
           | [] -> cont ctx
-          | x :: xs -> run_child_suite fmt ctx x (fun ctx -> iter xs ctx cont)
+          | x :: xs -> run_ex fmt ctx x (fun ctx -> iter xs ctx cont)
         in
-        iter (List.rev suite.child_groups) ctx cont
-      )
-      cont
+        iter (List.rev suite.examples) ctx cont
+      in
+
+      start_group suite.name fmt ctx
+        (fun ctx cont ->
+          let cont ctx = run_examples ctx cont in
+          let rec iter groups ctx cont =
+            match groups with
+            | [] -> cont ctx
+            | x :: xs -> run_child_suite fmt ctx x (fun ctx -> iter xs ctx cont)
+          in
+          iter (List.rev suite.child_groups) ctx cont
+        )
+        cont
   ;;
 
   let run_suite ?(fmt = Ocolor_format.raw_std_formatter) ?(filter = false)
-    ?(ctx = empty_suite_result) suite cont
+    ?(ctx = empty_suite_result) s cont
     =
-    Format.fprintf fmt "@[<v>";
-    let filter = filter || suite.has_focused in
-    let suite = if filter then filter_suite suite else suite in
-    run_child_suite fmt ctx suite (fun result ->
-      Format.pp_close_box fmt ();
-      Format.pp_print_flush fmt ();
-      cont result
-    )
+    match s with
+    | Context suite ->
+      Format.fprintf fmt "@[<v>";
+      let filter = filter || suite.has_focused in
+      let suite = if filter then filter_suite s else s in
+      run_child_suite fmt ctx suite (fun result ->
+        Format.pp_close_box fmt ();
+        Format.pp_print_flush fmt ();
+        cont result
+      )
   ;;
 
   let wait = Runner.wait
@@ -237,7 +244,9 @@ struct
   (** This runs the test suite and exits the program. If the test suite is
       successful, it will exit with exit code zero, otherwise it will exit with
       exit code 1. *)
-  let has_focused suite = suite.has_focused
+  let has_focused = function
+    | Context suite -> suite.has_focused
+  ;;
 end
 
 module SyncRunner = Make (Domain.Sync) (ExampleRunner.SyncRunner)
