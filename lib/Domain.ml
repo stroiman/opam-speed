@@ -75,7 +75,17 @@ module MakeFunctions (D : DOMAIN) = struct
     add_child_group child_group
   ;;
 
-  let get_example_count { examples; _ } = List.length examples
+  let get_example_count grp =
+    let rec iter acc { examples; child_groups; _ } =
+      Base.List.fold_left
+        ~init:(acc + List.length examples)
+        ~f:iter child_groups
+    in
+    iter 0 grp
+  ;;
+
+  let child_group_count { child_groups; _ } = List.length child_groups
+  let get_child_groups suite = suite.child_groups
 end
 
 module SyncTestResult = struct
