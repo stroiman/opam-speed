@@ -17,7 +17,7 @@ Speed.Dsl.root_context "Effect DSL"
               )
             )
           in
-          suite.examples |> List.length |> should (equal_int 2)
+          suite |> get_example_count |> should (equal_int 2)
       end;
     it "Should parse a test with context"
       begin
@@ -36,7 +36,7 @@ Speed.Dsl.root_context "Effect DSL"
           suite.child_groups |> List.length |> should (equal_int 2);
           let total_no_of_examples =
             suite.child_groups
-            |> List.fold_left (fun acc grp -> List.length grp.examples + acc) 0
+            |> List.fold_left (fun acc grp -> get_example_count grp + acc) 0
           in
           total_no_of_examples |> should (equal_int 3)
       end;

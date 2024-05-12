@@ -83,6 +83,8 @@ module MakeFunctions (D : DOMAIN) = struct
     let child_group = f (make_suite ~name ()) in
     add_child_group child_group
   ;;
+
+  let get_example_count { examples; _ } = List.length examples
 end
 
 module SyncTestResult = struct
