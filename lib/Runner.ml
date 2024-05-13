@@ -170,7 +170,7 @@ struct
     run ctx cont
   ;;
 
-  let run_ex fmt ctx (example : unit D.example) =
+  let run_ex fmt ctx example =
     let run ctx cont = Runner.run example.f ctx cont in
 
     start_example example.name fmt ctx run
