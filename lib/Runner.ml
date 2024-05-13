@@ -5,6 +5,10 @@ type suite_result = {
   no_of_passing_examples: int;
 }
 
+let ( >> ) f g x = g (f x)
+
+type 'a continuation = (suite_result -> 'a) -> 'a
+
 module ExampleRunner = struct
   type test_outcome =
     | Success
@@ -96,10 +100,10 @@ module Make
 struct
   open D
 
-  let rec filter_suite = function
+  let rec filter_suite : 'a. 'a D.t -> 'a D.t = function
     | suite ->
       let is_not_empty = function
-        | Child { child= suite } ->
+        | Child { child= suite; _ } ->
           suite.examples |> List.length > 0
           || suite.child_groups |> List.length > 0
       in
@@ -112,9 +116,7 @@ struct
       { suite with examples; child_groups }
 
   and filter_suite_mixed : 'a. 'a child_suite -> 'a child_suite = function
-    | Child x ->
-      let child = filter_suite x.child in
-      Child { child }
+    | Child { child; setup } -> Child { setup; child= filter_suite child }
   ;;
 
   let start_group name fmt ctx run cont =
@@ -170,20 +172,28 @@ struct
     run ctx cont
   ;;
 
-  let run_ex fmt ctx example =
-    let run ctx cont = Runner.run example.f ctx cont in
+  let run_ex fmt ctx example setup =
+    let run ctx cont = Runner.run (setup >> example.f) ctx cont in
 
     start_example example.name fmt ctx run
   ;;
 
-  let rec run_child_suite fmt ctx suite cont =
+  let rec run_child_suite
+    : type a.
+      Format.formatter ->
+      suite_result ->
+      a D.t ->
+      (unit -> a) ->
+      'b continuation
+    =
+    fun fmt ctx suite setup cont ->
     match suite with
     | suite ->
       let run_examples ctx cont =
         let rec iter examples ctx cont =
           match examples with
           | [] -> cont ctx
-          | x :: xs -> run_ex fmt ctx x (fun ctx -> iter xs ctx cont)
+          | x :: xs -> run_ex fmt ctx x setup (fun ctx -> iter xs ctx cont)
         in
         iter (List.rev suite.examples) ctx cont
       in
@@ -194,8 +204,9 @@ struct
           let rec iter groups ctx cont =
             match groups with
             | [] -> cont ctx
-            | Child { child } :: xs ->
-              run_child_suite fmt ctx child (fun ctx -> iter xs ctx cont)
+            | Child { child; setup= child_setup } :: xs ->
+              let setup x = child_setup (setup x) in
+              run_child_suite fmt ctx child setup (fun ctx -> iter xs ctx cont)
           in
           iter (List.rev suite.child_groups) ctx cont
         )
@@ -210,7 +221,7 @@ struct
       Format.fprintf fmt "@[<v>";
       let filter = filter || suite.has_focused in
       let suite = if filter then filter_suite s else s in
-      run_child_suite fmt ctx suite (fun result ->
+      run_child_suite fmt ctx suite Fun.id (fun result ->
         Format.pp_close_box fmt ();
         Format.pp_print_flush fmt ();
         cont result
@@ -245,10 +256,6 @@ struct
     exit exit_code
   ;;
 
-  (* let run_main suite = *)
-  (*   let fmt = Ocolor_format.raw_std_formatter in *)
-  (*   run_suite ~fmt suite (consume_test_result fmt) *)
-  (* ;; *)
   (** This runs the test suite and exits the program. If the test suite is
       successful, it will exit with exit code zero, otherwise it will exit with
       exit code 1. *)

@@ -15,7 +15,12 @@ module type DOMAIN = sig
     has_focused: bool;
   }
 
-  and 'a child_suite = Child : { child: 'a t } -> 'a child_suite
+  and 'a child_suite =
+    | Child : {
+        child: 'b t;
+        setup: 'a -> 'b;
+      }
+        -> 'a child_suite
 end
 
 module type TEST_RESULT = sig
@@ -39,7 +44,12 @@ module Make (R : TEST_RESULT) = struct
     has_focused: bool;
   }
 
-  and 'a child_suite = Child : { child: 'a t } -> 'a child_suite
+  and 'a child_suite =
+    | Child : {
+        child: 'b t;
+        setup: 'a -> 'b;
+      }
+        -> 'a child_suite
 end
 
 module MakeFunctions (D : DOMAIN) = struct
@@ -68,9 +78,14 @@ module MakeFunctions (D : DOMAIN) = struct
     | c, ctx ->
       {
         ctx with
-        child_groups= Child { child } :: ctx.child_groups;
+        child_groups= Child { child; setup= Fun.id } :: ctx.child_groups;
         has_focused= ctx.has_focused || c.has_focused;
       }
+  ;;
+
+  let add_fixture ~setup f parent =
+    let child = f (make_suite ()) in
+    { parent with child_groups= Child { child; setup } :: parent.child_groups }
   ;;
 
   let add_context name f =
@@ -85,11 +100,10 @@ module MakeFunctions (D : DOMAIN) = struct
         Base.List.fold_left
           ~init:(acc + List.length examples)
           ~f:iter_mixed child_groups
-    and iter_mixed : 'a. int -> 'a child_suite -> int =
-      fun acc x ->
+    and iter_mixed acc x =
       x
       |> function
-      | Child { child } -> iter_group acc child
+      | Child { child; _ } -> iter_group acc child
     in
     iter_group 0 grp
   ;;

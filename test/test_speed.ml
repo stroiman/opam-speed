@@ -5,6 +5,7 @@ open! Dsl_test
 open! Runner_test
 open! Lwt_runner_test
 open! Focus_test
+open! Fixture_test
 
 (* Used modules *)
 open Speed
