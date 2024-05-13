@@ -8,14 +8,14 @@ module type DOMAIN = sig
     f: 'a test_function;
   }
 
-  type 'a t =
-    | Context : {
-        name: string option;
-        child_groups: 'a t list;
-        examples: 'a example list;
-        has_focused: bool;
-      }
-        -> 'a t
+  type 'a t = {
+    name: string option;
+    child_groups: 'a child_suite list;
+    examples: 'a example list;
+    has_focused: bool;
+  }
+
+  and 'a child_suite = Child : { child: 'a t } -> 'a child_suite
 end
 
 module type TEST_RESULT = sig
@@ -32,59 +32,45 @@ module Make (R : TEST_RESULT) = struct
     f: 'a test_function;
   }
 
-  type 'a t =
-    | Context : {
-        name: string option;
-        child_groups: 'a t list;
-        examples: 'a example list;
-        has_focused: bool;
-      }
-        -> 'a t
+  type 'a t = {
+    name: string option;
+    child_groups: 'a child_suite list;
+    examples: 'a example list;
+    has_focused: bool;
+  }
 
-  type u
-
-  type gen_context =
-    | Create : {
-        context: 'a t;
-        fixture: unit -> 'a;
-      }
-        -> gen_context
+  and 'a child_suite = Child : { child: 'a t } -> 'a child_suite
 end
 
 module MakeFunctions (D : DOMAIN) = struct
   open D
 
-  let empty =
-    Context { name= None; child_groups= []; examples= []; has_focused= false }
-  ;;
+  let empty = { name= None; child_groups= []; examples= []; has_focused= false }
 
   (* D.empty *)
   let make_suite ?name () =
-    Context { name; child_groups= []; examples= []; has_focused= false }
+    { name; child_groups= []; examples= []; has_focused= false }
   ;;
 
   let make name = make_suite ~name ()
 
   let add_example ?(focus = false) name f = function
-    | Context ctx ->
-      Context
-        {
-          ctx with
-          examples= { name; focus; f } :: ctx.examples;
-          has_focused= ctx.has_focused || focus;
-        }
+    | ctx ->
+      {
+        ctx with
+        examples= { name; focus; f } :: ctx.examples;
+        has_focused= ctx.has_focused || focus;
+      }
   ;;
 
-  let add_child_group : 'a. 'a t -> 'a t -> 'a t =
-    fun child parent ->
+  let add_child_group child parent =
     match child, parent with
-    | Context c, Context ctx ->
-      Context
-        {
-          ctx with
-          child_groups= Context c :: ctx.child_groups;
-          has_focused= ctx.has_focused || c.has_focused;
-        }
+    | c, ctx ->
+      {
+        ctx with
+        child_groups= Child { child } :: ctx.child_groups;
+        has_focused= ctx.has_focused || c.has_focused;
+      }
   ;;
 
   let add_context name f =
@@ -93,15 +79,22 @@ module MakeFunctions (D : DOMAIN) = struct
   ;;
 
   let get_example_count grp =
-    let rec iter acc (Context { examples; child_groups; _ }) =
-      Base.List.fold_left
-        ~init:(acc + List.length examples)
-        ~f:iter child_groups
+    let rec iter_group : 'a. int -> 'a t -> int =
+      fun acc -> function
+      | { examples; child_groups; _ } ->
+        Base.List.fold_left
+          ~init:(acc + List.length examples)
+          ~f:iter_mixed child_groups
+    and iter_mixed : 'a. int -> 'a child_suite -> int =
+      fun acc x ->
+      x
+      |> function
+      | Child { child } -> iter_group acc child
     in
-    iter 0 grp
+    iter_group 0 grp
   ;;
 
-  let child_group_count (Context { child_groups; _ }) = List.length child_groups
+  let child_group_count { child_groups; _ } = List.length child_groups
 end
 
 module SyncTestResult = struct

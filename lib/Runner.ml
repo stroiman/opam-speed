@@ -97,17 +97,24 @@ struct
   open D
 
   let rec filter_suite = function
-    | Context suite ->
+    | suite ->
       let is_not_empty = function
-        | Context suite ->
+        | Child { child= suite } ->
           suite.examples |> List.length > 0
           || suite.child_groups |> List.length > 0
       in
       let examples = suite.examples |> List.filter (fun x -> x.focus) in
       let child_groups =
-        suite.child_groups |> List.map filter_suite |> List.filter is_not_empty
+        suite.child_groups
+        |> List.map filter_suite_mixed
+        |> List.filter is_not_empty
       in
-      Context { suite with examples; child_groups }
+      { suite with examples; child_groups }
+
+  and filter_suite_mixed : 'a. 'a child_suite -> 'a child_suite = function
+    | Child x ->
+      let child = filter_suite x.child in
+      Child { child }
   ;;
 
   let start_group name fmt ctx run cont =
@@ -171,7 +178,7 @@ struct
 
   let rec run_child_suite fmt ctx suite cont =
     match suite with
-    | Context suite ->
+    | suite ->
       let run_examples ctx cont =
         let rec iter examples ctx cont =
           match examples with
@@ -187,7 +194,8 @@ struct
           let rec iter groups ctx cont =
             match groups with
             | [] -> cont ctx
-            | x :: xs -> run_child_suite fmt ctx x (fun ctx -> iter xs ctx cont)
+            | Child { child } :: xs ->
+              run_child_suite fmt ctx child (fun ctx -> iter xs ctx cont)
           in
           iter (List.rev suite.child_groups) ctx cont
         )
@@ -198,7 +206,7 @@ struct
     ?(ctx = empty_suite_result) s cont
     =
     match s with
-    | Context suite ->
+    | suite ->
       Format.fprintf fmt "@[<v>";
       let filter = filter || suite.has_focused in
       let suite = if filter then filter_suite s else s in
@@ -245,7 +253,7 @@ struct
       successful, it will exit with exit code zero, otherwise it will exit with
       exit code 1. *)
   let has_focused = function
-    | Context suite -> suite.has_focused
+    | suite -> suite.has_focused
   ;;
 end
 

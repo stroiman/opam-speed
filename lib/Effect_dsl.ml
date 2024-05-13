@@ -9,11 +9,13 @@ struct
   open Domain.MakeFunctions (D)
   open Effect
 
-  type _ Effect.t += Op : (unit D.t -> unit D.t) -> unit t
+  type _ Effect.t += Op : (RootSuite.t -> RootSuite.t) -> unit t
 
-  let run (f : unit -> unit) (ctx : unit D.t) =
+  let run (f : unit -> unit) (ctx : RootSuite.t) =
     let open Effect.Shallow in
-    let rec loop : type a. (a, unit) continuation -> a -> unit D.t -> unit D.t =
+    let rec loop
+      : type a. (a, unit) continuation -> a -> RootSuite.t -> RootSuite.t
+      =
       fun k v ctx ->
       continue_with k v
         {
