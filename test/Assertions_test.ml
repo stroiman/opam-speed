@@ -58,59 +58,76 @@ let match_sexp_of_string expected =
 let match_t expected = match_sexp sexp_of_foo expected;;
 
 run_root (fun _ ->
-  context "Assertion library"
-    [%f
-      context "Int expectations"
-        [%f
-          it "Should print actual and expected"
-            [%f
-              let actual =
-                run_and_get_error_meg (fun _ -> expect 1 (equal_int 2))
-              in
-              let expected = "Assertion error\n  Expected: 2\n  Actual: 1" in
-              expect actual (equal_string expected)];
+  context "Assertion library" (fun _ ->
+    context "Int expectations" (fun _ ->
+      it "Should print actual and expected" (fun _ ->
+        let actual = run_and_get_error_meg (fun _ -> expect 1 (equal_int 2)) in
+        let expected = "Assertion error\n  Expected: 2\n  Actual: 1" in
+        expect actual (equal_string expected)
+      );
 
-          it "Should include a name in the error message" (fun _ ->
-            let actual =
-              run_and_get_error_meg
-                [%f expect ~name:"The value compared" 1 (equal_int 2)]
-            in
-            let expected =
-              "Assertion error: The value compared\n  Expected: 2\n  Actual: 1"
-            in
-            expect actual (equal_string expected)
-          )];
-
-      context "String assertions" (fun _ ->
-        test "String comparison errors"
-          [%f
-            let expected = "Assertion error\n  Expected: bar\n  Actual: Foo" in
-            (fun _ -> expect "Foo" (equal_string "bar"))
-            |> run_and_get_error_meg
-            |> should (equal_string expected)];
-
-        context "contains" (fun _ ->
-          test "Should succeed when actual contains substring" (fun _ ->
-            let matcher = contain "def" in
-            let actual = "abcdefgeh" in
-            actual |> run_matcher matcher |> should be_ok
-          );
-
-          test "Should fail when actual contains substring" (fun _ ->
-            let matcher = contain "xyz" in
-            let actual = "abcdefgeh" in
-            actual |> run_matcher matcher |> should be_error
-          )
+      it "Should include a name in the error message" (fun _ ->
+        run_and_get_error_meg (fun _ ->
+          expect ~name:"The value compared" 1 (equal_int 2)
         )
+        |> should
+           @@ equal_string
+                "Assertion error: The value compared\n\
+                \  Expected: 2\n\
+                \  Actual: 1"
+      )
+    );
+
+    context "String assertions" (fun _ ->
+      test "String comparison errors" (fun _ ->
+        (fun _ -> expect "Foo" (equal_string "bar"))
+        |> run_and_get_error_meg
+        |> should
+           @@ equal_string "Assertion error\n  Expected: bar\n  Actual: Foo"
       );
 
-      test "Sexp comparison" (fun _ ->
-        let input = "((a value_for_a)(b value_for_b))" in
-        input |> should (match_sexp_of_string ("a", equal_string "value_for_a"))
+      context "contains" (fun _ ->
+        test "Should succeed when actual contains substring" (fun _ ->
+          let matcher = contain "def" in
+          let actual = "abcdefgeh" in
+          actual |> run_matcher matcher |> should be_ok
+        );
+
+        test "Should fail when actual contains substring" (fun _ ->
+          let matcher = contain "xyz" in
+          let actual = "abcdefgeh" in
+          actual |> run_matcher matcher |> should be_error
+        )
+      )
+    );
+
+    test "Sexp comparison" (fun _ ->
+      let input = "((a value_for_a)(b value_for_b))" in
+      input |> should (match_sexp_of_string ("a", equal_string "value_for_a"))
+    );
+
+    test "Record sexp comparison" (fun _ ->
+      let actual = { a= "Value for a"; b= "Value for b" } in
+      expect actual (match_t ("a", equal_string "Value for a"))
+    );
+
+    context "Assertion combinations" (fun _ ->
+      test "Should fail on first matcher fails" (fun _ ->
+        let matcher = be_error >=> equal_string "value" in
+        Ok "value" |> run_matcher @@ matcher |> should be_error
       );
 
-      test "Record sexp comparison" (fun _ ->
-        let actual = { a= "Value for a"; b= "Value for b" } in
-        expect actual (match_t ("a", equal_string "Value for a"))
-      )]
+      test "Should fail on second matcher fails" (fun _ ->
+        Ok "WRONG value"
+        |> run_matcher @@ (be_ok >=> equal_string "value")
+        |> should be_error
+      );
+
+      test "Should succeed on both matchers succeed" (fun _ ->
+        Ok "value"
+        |> run_matcher @@ (be_ok >=> equal_string "value")
+        |> should be_ok
+      )
+    )
+  )
 )

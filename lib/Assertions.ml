@@ -95,4 +95,5 @@ let expect ?name actual assertion =
     raise (FormattedAssertionError errorFormat)
 ;;
 
+let ( >=> ) m1 m2 actual = actual |> m1 |> Base.Result.bind ~f:m2
 let should ?name assertion actual = expect ?name actual assertion
