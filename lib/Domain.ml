@@ -73,19 +73,21 @@ module MakeFunctions (D : DOMAIN) = struct
       }
   ;;
 
-  let add_child_group child parent =
-    match child, parent with
-    | c, ctx ->
+  let add_child child parent =
+    match child with
+    | Child { child= { has_focused; _ }; _ } ->
       {
-        ctx with
-        child_groups= Child { child; setup= Fun.id } :: ctx.child_groups;
-        has_focused= ctx.has_focused || c.has_focused;
+        parent with
+        child_groups= child :: parent.child_groups;
+        has_focused= parent.has_focused || has_focused;
       }
   ;;
 
-  let add_fixture ~setup f parent =
-    let child = f (make_suite ()) in
-    { parent with child_groups= Child { child; setup } :: parent.child_groups }
+  let add_child_group child = add_child (Child { child; setup= Fun.id })
+
+  let add_fixture ?name ~setup f =
+    let child = f (make_suite ?name ()) in
+    add_child (Child { child; setup })
   ;;
 
   let add_context name f =
