@@ -100,6 +100,10 @@ module Make
 struct
   open D
 
+  type ('a, 'b) setup_stack =
+    | Root : (unit -> 'a) -> (unit, 'a) setup_stack
+    | Stack : ('a, 'b) setup_stack * ('b -> 'c) -> ('a, 'c) setup_stack
+
   let rec filter_suite : 'a. 'a D.t -> 'a D.t = function
     | suite ->
       let is_not_empty = function
@@ -172,8 +176,14 @@ struct
     run ctx cont
   ;;
 
-  let run_ex fmt ctx example setup =
-    let run ctx cont = Runner.run (setup >> example.f) ctx cont in
+  let rec run_setup : 'b. (unit, 'b) setup_stack -> 'b = function
+    | Root f -> f ()
+    | Stack (f, g) -> g (run_setup f)
+  ;;
+
+  let run_ex fmt ctx example setups =
+    let test_input = run_setup setups in
+    let run ctx cont = Runner.run (fun () -> example.f test_input) ctx cont in
 
     start_example example.name fmt ctx run
   ;;
@@ -183,17 +193,17 @@ struct
       Format.formatter ->
       suite_result ->
       a D.t ->
-      (unit -> a) ->
+      (unit, a) setup_stack ->
       'b continuation
     =
-    fun fmt ctx suite setup cont ->
+    fun fmt ctx suite setups cont ->
     match suite with
     | suite ->
       let run_examples ctx cont =
         let rec iter examples ctx cont =
           match examples with
           | [] -> cont ctx
-          | x :: xs -> run_ex fmt ctx x setup (fun ctx -> iter xs ctx cont)
+          | x :: xs -> run_ex fmt ctx x setups (fun ctx -> iter xs ctx cont)
         in
         iter (List.rev suite.examples) ctx cont
       in
@@ -205,8 +215,8 @@ struct
             match groups with
             | [] -> cont ctx
             | Child { child; setup= child_setup } :: xs ->
-              let setup x = child_setup (setup x) in
-              run_child_suite fmt ctx child setup (fun ctx -> iter xs ctx cont)
+              let setups = Stack (setups, child_setup) in
+              run_child_suite fmt ctx child setups (fun ctx -> iter xs ctx cont)
           in
           iter (List.rev suite.child_groups) ctx cont
         )
@@ -221,7 +231,7 @@ struct
       Format.fprintf fmt "@[<v>";
       let filter = filter || suite.has_focused in
       let suite = if filter then filter_suite s else s in
-      run_child_suite fmt ctx suite Fun.id (fun result ->
+      run_child_suite fmt ctx suite (Root Fun.id) (fun result ->
         Format.pp_close_box fmt ();
         Format.pp_print_flush fmt ();
         cont result
