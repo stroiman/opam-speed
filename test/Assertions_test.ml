@@ -80,10 +80,10 @@ run_root (fun _ ->
 
     context "String assertions" (fun _ ->
       test "String comparison errors" (fun _ ->
+        let expected = "Assertion error\n  Expected: bar\n  Actual: Foo" in
         (fun _ -> expect "Foo" (equal_string "bar"))
         |> run_and_get_error_meg
-        |> should
-           @@ equal_string "Assertion error\n  Expected: bar\n  Actual: Foo"
+        |> should (equal_string expected)
       );
 
       context "contains" (fun _ ->

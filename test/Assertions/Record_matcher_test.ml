@@ -59,6 +59,6 @@ run_root (fun _ ->
     );
 
     it "Should just be called 'have' for a type named 't'"
-      [%f { x= "x"; y= "y" } |> should (have ~x:(equal_string "x"))]
+      [%f_ { x= "x"; y= "y" } |> should (have ~x:(equal_string "x"))]
   )
 )

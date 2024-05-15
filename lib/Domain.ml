@@ -1,16 +1,25 @@
+type metadata = ..
+
+type 'a test_input = {
+  metadata: metadata list;
+  subject: 'a;
+}
+
 module type DOMAIN = sig
   type test_result
-  type 'a test_function = 'a -> test_result
+  type 'a test_function = 'a test_input -> test_result
 
   type 'a example = {
     name: string;
     focus: bool;
+    metadata: metadata list;
     f: 'a test_function;
   }
 
   type 'a t = {
     name: string option;
     child_groups: 'a child_suite list;
+    metadata: metadata list;
     examples: 'a example list;
     has_focused: bool;
   }
@@ -18,7 +27,7 @@ module type DOMAIN = sig
   and 'a child_suite =
     | Child : {
         child: 'b t;
-        setup: 'a -> 'b;
+        setup: 'a test_input -> 'b;
       }
         -> 'a child_suite
 end
@@ -29,17 +38,19 @@ end
 
 module Make (R : TEST_RESULT) = struct
   type test_result = R.t
-  type 'a test_function = 'a -> test_result
+  type 'a test_function = 'a test_input -> test_result
 
   type 'a example = {
     name: string;
     focus: bool;
+    metadata: metadata list;
     f: 'a test_function;
   }
 
   type 'a t = {
     name: string option;
     child_groups: 'a child_suite list;
+    metadata: metadata list;
     examples: 'a example list;
     has_focused: bool;
   }
@@ -47,7 +58,7 @@ module Make (R : TEST_RESULT) = struct
   and 'a child_suite =
     | Child : {
         child: 'b t;
-        setup: 'a -> 'b;
+        setup: 'a test_input -> 'b;
       }
         -> 'a child_suite
 end
@@ -55,20 +66,28 @@ end
 module MakeFunctions (D : DOMAIN) = struct
   open D
 
-  let empty = { name= None; child_groups= []; examples= []; has_focused= false }
+  let empty =
+    {
+      name= None;
+      child_groups= [];
+      metadata= [];
+      examples= [];
+      has_focused= false;
+    }
+  ;;
 
   (* D.empty *)
-  let make_suite ?name () =
-    { name; child_groups= []; examples= []; has_focused= false }
+  let make_suite ?name ?(metadata = []) () =
+    { name; child_groups= []; metadata; examples= []; has_focused= false }
   ;;
 
   let make name = make_suite ~name ()
 
-  let add_example ?(focus = false) name f = function
+  let add_example ?(focus = false) ?(metadata = []) name f = function
     | ctx ->
       {
         ctx with
-        examples= { name; focus; f } :: ctx.examples;
+        examples= { name; focus; f; metadata } :: ctx.examples;
         has_focused= ctx.has_focused || focus;
       }
   ;;
@@ -83,15 +102,17 @@ module MakeFunctions (D : DOMAIN) = struct
       }
   ;;
 
-  let add_child_group child = add_child (Child { child; setup= Fun.id })
+  let add_child_group child =
+    add_child (Child { child; setup= (fun { subject; _ } -> subject) })
+  ;;
 
   let add_fixture ?name ~setup f =
     let child = f (make_suite ?name ()) in
     add_child (Child { child; setup })
   ;;
 
-  let add_context name f =
-    let child_group = f (make_suite ~name ()) in
+  let add_context ?metadata name f =
+    let child_group = f (make_suite ~name ?metadata ()) in
     add_child_group child_group
   ;;
 

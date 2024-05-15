@@ -33,9 +33,9 @@ module ExampleRunner = struct
     let wait x = x
     let return = Fun.id
 
-    let run f ctx cont =
+    let run (f : test_function) ctx cont =
       try
-        f ();
+        f { metadata= []; subject= () };
         cont ctx Success
       with e ->
         ( match e with
@@ -51,7 +51,7 @@ module ExampleRunner = struct
   end
 
   module LwtRunner = struct
-    type test_function = unit -> unit Lwt.t
+    type test_function = unit Domain.test_input -> unit Lwt.t
     type ('a, 'b) cont = 'a -> test_outcome -> 'b Lwt.t
     type 'b cont_result = 'b Lwt.t
 
@@ -60,7 +60,7 @@ module ExampleRunner = struct
 
     let run (f : test_function) (ctx : 'a) (cont : ('a, 'b) cont) : 'b Lwt.t =
       try%lwt
-        let%lwt _ = f () in
+        let%lwt _ = f { metadata= []; subject= () } in
         cont ctx Success
       with e ->
         ( match e with
@@ -101,8 +101,10 @@ struct
   open D
 
   type ('a, 'b) setup_stack =
-    | Root : (unit -> 'a) -> (unit, 'a) setup_stack
-    | Stack : ('a, 'b) setup_stack * ('b -> 'c) -> ('a, 'c) setup_stack
+    | Root : (unit Domain.test_input -> 'a) -> (unit, 'a) setup_stack
+    | Stack :
+        ('a, 'b) setup_stack * ('b Domain.test_input -> 'c)
+        -> ('a, 'c) setup_stack
 
   let rec filter_suite : 'a. 'a D.t -> 'a D.t = function
     | suite ->
@@ -176,14 +178,17 @@ struct
     run ctx cont
   ;;
 
-  let rec run_setup : 'b. (unit, 'b) setup_stack -> 'b = function
-    | Root f -> f ()
-    | Stack (f, g) -> g (run_setup f)
+  let rec run_setup : 'b. Domain.metadata list -> (unit, 'b) setup_stack -> 'b =
+    fun metadata -> function
+    | Root f -> f Domain.{ metadata; subject= () }
+    | Stack (f, g) -> g { metadata; subject= run_setup metadata f }
   ;;
 
-  let run_ex fmt ctx example setups =
-    let test_input = run_setup setups in
-    let run ctx cont = Runner.run (fun () -> example.f test_input) ctx cont in
+  let run_ex fmt ctx (example : 'a D.example) metadata setups =
+    let test_input = run_setup (example.metadata @ metadata) setups in
+    let run ctx cont =
+      Runner.run (fun d -> example.f { d with subject= test_input }) ctx cont
+    in
 
     start_example example.name fmt ctx run
   ;;
@@ -193,17 +198,20 @@ struct
       Format.formatter ->
       suite_result ->
       a D.t ->
+      Domain.metadata list ->
       (unit, a) setup_stack ->
       'b continuation
     =
-    fun fmt ctx suite setups cont ->
+    fun fmt ctx suite metadata setups cont ->
+    let metadata = suite.metadata @ metadata in
     match suite with
     | suite ->
       let run_examples ctx cont =
         let rec iter examples ctx cont =
           match examples with
           | [] -> cont ctx
-          | x :: xs -> run_ex fmt ctx x setups (fun ctx -> iter xs ctx cont)
+          | x :: xs ->
+            run_ex fmt ctx x metadata setups (fun ctx -> iter xs ctx cont)
         in
         iter (List.rev suite.examples) ctx cont
       in
@@ -216,7 +224,9 @@ struct
             | [] -> cont ctx
             | Child { child; setup= child_setup } :: xs ->
               let setups = Stack (setups, child_setup) in
-              run_child_suite fmt ctx child setups (fun ctx -> iter xs ctx cont)
+              run_child_suite fmt ctx child metadata setups (fun ctx ->
+                iter xs ctx cont
+              )
           in
           iter (List.rev suite.child_groups) ctx cont
         )
@@ -231,11 +241,13 @@ struct
       Format.fprintf fmt "@[<v>";
       let filter = filter || suite.has_focused in
       let suite = if filter then filter_suite s else s in
-      run_child_suite fmt ctx suite (Root Fun.id) (fun result ->
-        Format.pp_close_box fmt ();
-        Format.pp_print_flush fmt ();
-        cont result
-      )
+      run_child_suite fmt ctx suite []
+        (Root (fun _ -> ()))
+        (fun result ->
+          Format.pp_close_box fmt ();
+          Format.pp_print_flush fmt ();
+          cont result
+        )
   ;;
 
   let wait = Runner.wait

@@ -19,7 +19,7 @@ open Null_formatter;;
 root_context "Test outcome"
   [
     test "is_success should return success=true when test case doesn't raise"
-      [%f
+      [%f_
         expect
           (empty |> addExample passing_test |> run_suite ~fmt |> is_success)
           be_true];
