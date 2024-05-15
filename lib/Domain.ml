@@ -1,5 +1,9 @@
 type metadata = ..
 
+module Metadata_list = struct
+  let find_map = Base.List.find_map
+end
+
 type 'a test_input = {
   metadata: metadata list;
   subject: 'a;

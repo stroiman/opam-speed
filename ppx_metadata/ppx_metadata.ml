@@ -8,12 +8,10 @@ let ppx_fun_expander_args ~loc (expr : Parsetree.expression) =
     let (module Ast) = Ast_builder.make loc in
     let pattern = Ast.ppat_construct id (Some (Ast.pvar "x")) in
     [%expr
-      Base.List.find_map
-        ~f:(function
-          | [%p pattern] -> Some x
-          | _ -> None
-          )
-        metadata]
+      Speed.Domain.Metadata_list.find_map ~f:(function
+        | [%p pattern] -> Some x
+        | _ -> None
+        )]
   | _ -> failwith "Unknown type"
 ;;
 

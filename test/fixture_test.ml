@@ -61,7 +61,9 @@ root_context "Fixture" (fun _ ->
       make_suite ()
       |> add_fixture
            ~setup:(fun { metadata; _ } ->
-             [%m IntValue] |> Base.Option.value_or_thunk ~default:[%f_ 42]
+             metadata
+             |> [%m IntValue]
+             |> Base.Option.value_or_thunk ~default:[%f_ 42]
            )
            (add_example ~metadata:[IntValue 123] "test" (fun { subject; _ } ->
               actual := subject
