@@ -1,6 +1,8 @@
 type metadata = ..
 
 module Metadata_list = struct
+  (* This function mostly exists for the purpose of the ppx rewriter, making
+     it generate code that depends only on this library *)
   let find_map = Base.List.find_map
 end
 
@@ -8,6 +10,8 @@ type 'a test_input = {
   metadata: metadata list;
   subject: 'a;
 }
+
+let get_metadata { metadata; _ } = metadata
 
 module type DOMAIN = sig
   type test_result

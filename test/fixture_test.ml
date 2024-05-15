@@ -37,7 +37,7 @@ root_context "Fixture" (fun _ ->
       |> add_fixture
            ~setup:(fun { metadata; _ } ->
              Base.List.find_map ~f:get_value metadata
-             |> Base.Option.value_or_thunk ~default:[%f_ 42]
+             |> Base.Option.value_or_thunk ~default:(fun _ -> 42)
            )
            (fun suite ->
              suite
@@ -74,6 +74,43 @@ root_context "Fixture" (fun _ ->
     |> ignore;
     !actual |> should @@ equal_int 123;
     ()
+  );
+
+  test "It can read metadata from example using ppx and default value" (fun _ ->
+    (* This test does exactly the same as above, but uses a ppx transformation
+       to simplify looking up metadata
+    *)
+    let actual = ref 0 in
+    Domain.(
+      make_suite ()
+      |> add_fixture
+           ~setup:(fun { metadata; _ } -> metadata |> [%m IntValue 42])
+           (add_example ~metadata:[IntValue 123] "test" (fun { subject; _ } ->
+              actual := subject
+            )
+           )
+    )
+    |> run_suite ~fmt
+    |> ignore;
+    !actual |> should @@ equal_int 123;
+    ()
+  );
+
+  test "It can read metadata from test input using ppx and default value"
+    (fun _ ->
+       let actual = ref 0 in
+       Domain.(
+         make_suite ()
+         |> add_fixture ~setup:[%mx IntValue 42]
+              (add_example ~metadata:[IntValue 123] "test"
+                 (fun { subject; _ } -> actual := subject
+               )
+              )
+       )
+       |> run_suite ~fmt
+       |> ignore;
+       !actual |> should @@ equal_int 123;
+       ()
   );
 
   test "It can read metadata from parent group" (fun _ ->
