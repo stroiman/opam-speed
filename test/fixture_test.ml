@@ -52,6 +52,28 @@ root_context "Fixture" (fun _ ->
     ()
   );
 
+  test "It can read metadata from example using ppx" (fun _ ->
+    (* This test does exactly the same as above, but uses a ppx transformation
+       to simplify looking up metadata
+    *)
+    let actual = ref 0 in
+    Domain.(
+      make_suite ()
+      |> add_fixture
+           ~setup:(fun { metadata; _ } ->
+             [%m IntValue] |> Base.Option.value_or_thunk ~default:[%f_ 42]
+           )
+           (add_example ~metadata:[IntValue 123] "test" (fun { subject; _ } ->
+              actual := subject
+            )
+           )
+    )
+    |> run_suite ~fmt
+    |> ignore;
+    !actual |> should @@ equal_int 123;
+    ()
+  );
+
   test "It can read metadata from parent group" (fun _ ->
     let actual = ref 0 in
     Domain.(
