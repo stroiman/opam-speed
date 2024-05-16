@@ -9,9 +9,11 @@ struct
   open Domain.MakeFunctions (D)
 
   type 'a builder = {
-    context: string -> ('a builder -> unit) -> unit;
+    context:
+      ?metadata:Domain.metadata list -> string -> ('a builder -> unit) -> unit;
     fixture:
       'b.
+      ?metadata:Domain.metadata list ->
       setup:('a Domain.test_input -> 'b) ->
       string ->
       ('b builder -> unit) ->
@@ -47,28 +49,15 @@ struct
             );
         }
     in
-    loop (fiber f)
-      {
-        fixture=
-          (fun (type b)
-            ~(setup : a Domain.test_input -> b)
-            name
-            (specs : b builder -> unit) ->
-            let op =
-              make name |> run specs |> add_child_group_with_setup ~setup
-            in
-            perform (Op op)
-          );
-        context=
-          (fun name specs ->
-            perform (Op (make name |> run specs |> add_child_group))
-          );
-        test=
-          (fun ?metadata name f ->
-            Effect.perform (Op (add_example ?metadata name f))
-          );
-      }
-      ctx
+    let fixture ?metadata ~setup name specs =
+      perform (Op (add_fixture ?metadata ~name ~setup @@ run specs))
+    in
+    let context ?metadata name specs =
+      perform (Op (add_context ?metadata name (run specs)))
+    in
+    let test ?metadata name f = perform (Op (add_example ?metadata name f)) in
+
+    loop (fiber f) { fixture; context; test } ctx
   ;;
 
   let parse (f : unit builder -> unit) = run f @@ make_suite ()

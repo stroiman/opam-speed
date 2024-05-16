@@ -127,8 +127,8 @@ module MakeFunctions (D : DOMAIN) = struct
     add_child (Child { child; setup })
   ;;
 
-  let add_fixture ?name ~setup f =
-    let child = f (make_suite ?name ()) in
+  let add_fixture ?name ?metadata ~setup f =
+    let child = f (make_suite ?name ?metadata ()) in
     add_child (Child { child; setup })
   ;;
 
