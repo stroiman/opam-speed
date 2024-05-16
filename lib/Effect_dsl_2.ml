@@ -21,7 +21,7 @@ struct
     test: ?metadata:Domain.metadata list -> string -> 'a D.test_function -> unit;
   }
 
-  module MakeInner (C : sig
+  module MakeTypes (C : sig
       type t
     end) =
   struct
@@ -32,7 +32,7 @@ struct
     fun (f : a builder -> unit) (ctx : a D.t) : a D.t ->
     let open Effect in
     let open Effect.Shallow in
-    let open MakeInner (struct
+    let open MakeTypes (struct
         type t = a
       end) in
     let rec loop : type c. (c, _) continuation -> c -> 'a D.t -> 'a D.t =
