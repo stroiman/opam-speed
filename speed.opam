@@ -17,6 +17,7 @@ depends: [
   "base"
   "lwt"
   "lwt_ppx"
+  "ppx_jane"
   "odoc" {with-doc}
 ]
 build: [
