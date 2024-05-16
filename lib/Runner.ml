@@ -112,6 +112,9 @@ struct
         | Child { child= suite; _ } ->
           suite.examples |> List.length > 0
           || suite.child_groups |> List.length > 0
+        | Context { child= suite } ->
+          suite.examples |> List.length > 0
+          || suite.child_groups |> List.length > 0
       in
       let examples = suite.examples |> List.filter (fun x -> x.focus) in
       let child_groups =
@@ -123,6 +126,7 @@ struct
 
   and filter_suite_mixed : 'a. 'a child_suite -> 'a child_suite = function
     | Child { child; setup } -> Child { setup; child= filter_suite child }
+    | Context { child } -> Context { child= filter_suite child }
   ;;
 
   let start_group name fmt ctx run cont =
@@ -224,6 +228,10 @@ struct
             | [] -> cont ctx
             | Child { child; setup= child_setup } :: xs ->
               let setups = Stack (setups, child_setup) in
+              run_child_suite fmt ctx child metadata setups (fun ctx ->
+                iter xs ctx cont
+              )
+            | Context { child } :: xs ->
               run_child_suite fmt ctx child metadata setups (fun ctx ->
                 iter xs ctx cont
               )

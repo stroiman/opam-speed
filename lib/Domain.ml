@@ -38,6 +38,7 @@ module type DOMAIN = sig
         setup: 'a test_input -> 'b;
       }
         -> 'a child_suite
+    | Context : { child: 'a t } -> 'a child_suite
 end
 
 module type TEST_RESULT = sig
@@ -69,6 +70,7 @@ module Make (R : TEST_RESULT) = struct
         setup: 'a test_input -> 'b;
       }
         -> 'a child_suite
+    | Context : { child: 'a t } -> 'a child_suite
 end
 
 module MakeFunctions (D : DOMAIN) = struct
@@ -108,13 +110,22 @@ module MakeFunctions (D : DOMAIN) = struct
         child_groups= child :: parent.child_groups;
         has_focused= parent.has_focused || has_focused;
       }
+    | Context { child= { has_focused; _ } } ->
+      {
+        parent with
+        child_groups= child :: parent.child_groups;
+        has_focused= parent.has_focused || has_focused;
+      }
   ;;
 
-  let add_child_group child =
-    add_child (Child { child; setup= (fun { subject; _ } -> subject) })
-  ;;
+  (* If I add ?setup as input, it gets inferred to `a test_input -> a` instead
+     of `a test_input -> b` - but in the one below, where it's not optional,
+     it's inferred correctly. Annoying *)
+  let add_child_group child = add_child (Context { child })
 
-  let add_child_group_x setup child = add_child (Child { child; setup })
+  let add_child_group_with_setup ~setup child =
+    add_child (Child { child; setup })
+  ;;
 
   let add_fixture ?name ~setup f =
     let child = f (make_suite ?name ()) in
@@ -137,6 +148,7 @@ module MakeFunctions (D : DOMAIN) = struct
       x
       |> function
       | Child { child; _ } -> iter_group acc child
+      | Context { child } -> iter_group acc child
     in
     iter_group 0 grp
   ;;

@@ -54,7 +54,9 @@ struct
             ~(setup : a Domain.test_input -> b)
             name
             (specs : b builder -> unit) ->
-            let op = make name |> run specs |> add_child_group_x setup in
+            let op =
+              make name |> run specs |> add_child_group_with_setup ~setup
+            in
             perform (Op op)
           );
         context=
