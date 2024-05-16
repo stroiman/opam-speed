@@ -182,5 +182,25 @@ root_context "Fixture" (fun _ ->
     |> ignore;
     !actual |> should @@ equal_int 123;
     ()
+  );
+
+  test "It works with the DSL" (fun _ ->
+    let actual = ref 0 in
+    let suite =
+      Effect_dsl_2.(
+        parse (fun s ->
+          s.context "root" (fun s ->
+            s.fixture "child" ~setup:[%mx IntValue 42] (fun s ->
+              s.test ~metadata:[IntValue 123] "Test" (fun { subject; _ } ->
+                actual := subject
+              )
+            )
+          )
+        )
+      )
+    in
+    suite |> run_suite ~fmt |> ignore;
+    !actual |> should @@ equal_int 123;
+    ()
   )
 )
