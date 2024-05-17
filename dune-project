@@ -19,7 +19,7 @@
  (name speed)
  (synopsis "Speed - go fast by writing test first")
  (description "Test framework inspired by the greatest I've yet worked with, RSpec")
- (depends ocaml dune ocolor ppxlib base lwt lwt_ppx ppx_jane)
+ (depends (ocaml (>= 5)) dune ocolor ppxlib base lwt lwt_ppx ppx_jane)
  (tags
   (topics "to describe" your project)))
 
