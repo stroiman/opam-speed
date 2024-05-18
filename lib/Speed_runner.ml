@@ -190,7 +190,7 @@ struct
 
   let rec run_setup : 'b. metadata list -> (unit, 'b) setup_stack -> 'b =
     fun metadata -> function
-    | Root f -> f Domain.{ metadata; subject= () }
+    | Root f -> f Domain.TestInput.{ metadata; subject= () }
     | Stack (f, g) -> g { metadata; subject= run_setup metadata f }
   ;;
 

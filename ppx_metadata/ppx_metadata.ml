@@ -3,10 +3,10 @@ open Ppxlib
 (* open Ppxlib.Ast_builder.Default *)
 
 let ppx_fun_expander_args ~loc (expr : Parsetree.expression) =
+  let (module Builder) = Ast_builder.make loc in
   match expr.pexp_desc with
   | Ast.Pexp_construct (id, default) ->
-    let (module Ast) = Ast_builder.make loc in
-    let pattern = Ast.ppat_construct id (Some (Ast.pvar "x")) in
+    let pattern = Builder.ppat_construct id (Some (Builder.pvar "x")) in
     let lookup =
       [%expr
         Speed.Metadata.List.find_map ~f:(function
@@ -25,12 +25,13 @@ let ppx_fun_expander_args ~loc (expr : Parsetree.expression) =
             | Some x -> x
             | None -> [%e d]]
     )
-  | _ -> failwith "Unknown type"
+  | _ ->
+    failwith "Bad input to ppx_metadata. Value must be a variant constructor"
 ;;
 
 let ppx_fun_expander_args_2 ~loc (expr : Parsetree.expression) =
-  let exp = ppx_fun_expander_args ~loc expr in
-  [%expr fun x -> x |> Speed.Domain.get_metadata |> [%e exp]]
+  let expr = ppx_fun_expander_args ~loc expr in
+  [%expr fun x -> x |> Speed.Domain.TestInput.get_metadata |> [%e expr]]
 ;;
 
 let[@warning "-27"] extension =

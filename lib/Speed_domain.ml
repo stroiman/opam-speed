@@ -1,12 +1,16 @@
 (* type metadata = Speed_metadata.metadata.t *)
 module Metadata = Speed_metadata
 
-type 'a test_input = {
-  metadata: Metadata.t list;
-  subject: 'a;
-}
+module TestInput = struct
+  type 'a t = {
+    metadata: Metadata.t list;
+    subject: 'a;
+  }
 
-let get_metadata { metadata; _ } = metadata
+  let get_metadata { metadata; _ } = metadata
+end
+
+type 'a test_input = 'a TestInput.t
 
 module type DOMAIN = sig
   type test_result
