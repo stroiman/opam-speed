@@ -140,9 +140,7 @@ module MakeFunctions (D : DOMAIN) = struct
     let rec iter_group : 'a. int -> 'a t -> int =
       fun acc -> function
       | { examples; child_groups; _ } ->
-        Base.List.fold_left
-          ~init:(acc + List.length examples)
-          ~f:iter_mixed child_groups
+        List.fold_left iter_mixed (acc + List.length examples) child_groups
     and iter_mixed acc x =
       x
       |> function

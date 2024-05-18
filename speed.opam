@@ -17,7 +17,6 @@ depends: [
   "dune" {>= "3.15"}
   "ocolor"
   "ppxlib"
-  "base"
   "lwt"
   "lwt_ppx"
   "ppx_jane"

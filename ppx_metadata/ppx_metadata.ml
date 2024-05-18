@@ -9,7 +9,7 @@ let ppx_fun_expander_args ~loc (expr : Parsetree.expression) =
     let pattern = Builder.ppat_construct id (Some (Builder.pvar "x")) in
     let lookup =
       [%expr
-        Speed.Metadata.List.find_map ~f:(function
+        Speed.Metadata.List.find_map (function
           | [%p pattern] -> Some x
           | _ -> None
           )]

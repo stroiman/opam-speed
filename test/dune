@@ -1,5 +1,5 @@
 (test
-  (libraries base speed ocolor parsexp lwt)
+  (libraries speed ocolor parsexp lwt)
   (preprocess (pps speed.ppx_fun ppx_jane speed.ppx_matcher speed.ppx_metadata lwt_ppx))
   (name test_speed))
   (include_subdirs qualified)

@@ -59,8 +59,25 @@ let equal_string expected actual =
   | false -> equality_failure expected actual Format.pp_print_string
 ;;
 
+let is_substring actual search =
+  let c = String.get search 0 in
+  let l = String.length search in
+  let max_i = String.length actual - l in
+  let rec iter index =
+    match String.index_from_opt actual index c with
+    | None -> false
+    | Some i ->
+      if i > max_i
+      then false
+      else if String.sub actual i l |> String.equal search
+      then true
+      else iter (index + 1)
+  in
+  iter 0
+;;
+
 let contain substring actual =
-  match Base.String.is_substring ~substring actual with
+  match is_substring actual substring with
   | true -> match_success actual
   | false ->
     equality_failure
@@ -93,5 +110,7 @@ let expect ?name actual assertion =
     raise (FormattedAssertionError errorFormat)
 ;;
 
-let ( >=> ) m1 m2 actual = actual |> m1 |> Base.Result.bind ~f:m2
+let ( >=> ) m1 m2 actual = Result.bind (m1 actual) m2
+(* actual |> m1 |> Base.Result.bind ~f:m2 *)
+
 let should ?name assertion actual = expect ?name actual assertion

@@ -3,5 +3,5 @@
  (wrapped false) 
  (public_name speed)
  (preprocess (pps lwt_ppx))
- (libraries ocolor base lwt lwt.unix)
+ (libraries ocolor lwt lwt.unix)
  )

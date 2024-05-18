@@ -2,7 +2,7 @@
   (name speed_ppx_matcher)
   (public_name speed.ppx_matcher)
   (kind ppx_deriver)
-  (libraries ppxlib base)
+  (libraries ppxlib)
   (preprocess (pps ppxlib.metaquot))
   )
 

@@ -1,8 +1,7 @@
 open Ppxlib
-open Base
 
 let str_gen ~loc ~path:_ (_rec, t) =
-  let t = List.hd_exn t in
+  let t = List.hd t in
   let (module Ast) = Ast_builder.make loc in
   let fields =
     match t.ptype_kind with
@@ -25,31 +24,34 @@ let str_gen ~loc ~path:_ (_rec, t) =
     let expr =
       let body =
         let init = [%expr Ok ()] in
-        fields
-        |> List.fold_right ~init ~f:(fun field iter ->
-          let lident_actual = Loc.make ~loc (Longident.parse "actual") in
-          [%expr
-            [%e iter]
-            |> Speed.Assertions.AssertionResult.bind ~f:(fun _ ->
-              match [%e Ast.pexp_ident (lident_of_field field)] with
-              | None -> Ok ()
-              | Some v ->
-                [%e
-                  Ast.pexp_field
-                    (Ast.pexp_ident lident_actual)
-                    (lident_of_field field)]
-                |> v
-                |> Speed.Assertions.AssertionResult.map ignore
-            )]
-        )
+
+        List.fold_right
+          (fun field iter ->
+            let lident_actual = Loc.make ~loc (Longident.parse "actual") in
+            [%expr
+              [%e iter]
+              |> Speed.Assertions.AssertionResult.bind ~f:(fun _ ->
+                match [%e Ast.pexp_ident (lident_of_field field)] with
+                | None -> Ok ()
+                | Some v ->
+                  [%e
+                    Ast.pexp_field
+                      (Ast.pexp_ident lident_actual)
+                      (lident_of_field field)]
+                  |> v
+                  |> Speed.Assertions.AssertionResult.map ignore
+              )]
+          )
+          fields init
       in
       let init = [%expr fun actual -> [%e body]] in
-      fields
-      |> List.fold_right ~init ~f:(fun name inner ->
-        Ast.pexp_fun (Optional name.pld_name.txt) None
-          (Ast.ppat_var name.pld_name)
-          inner
-      )
+      List.fold_right
+        (fun name inner ->
+          Ast.pexp_fun (Optional name.pld_name.txt) None
+            (Ast.ppat_var name.pld_name)
+            inner
+        )
+        fields init
     in
     [[%stri let [%p pat] = [%e expr]]]
 ;;
