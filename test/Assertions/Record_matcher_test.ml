@@ -1,5 +1,5 @@
 open Speed.Assertions
-open Speed.Effect_dsl
+open Speed.Dsl.Effect.Simple
 
 type test_type = {
   a: string;

@@ -9,7 +9,7 @@ open! Fixture_test
 
 (* Used modules *)
 open Speed
-open Dsl
+open Dsl.List
 open Speed.Domain
 open Speed.Runner
 open Speed.Assertions

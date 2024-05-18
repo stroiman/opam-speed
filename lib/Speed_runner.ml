@@ -1,5 +1,5 @@
 module Domain = Speed_domain
-module Dsl = Speed_dsl
+module Dsl = Speed_dsl_list
 module Assertions = Speed_assertions
 
 type metadata = Speed_metadata.t

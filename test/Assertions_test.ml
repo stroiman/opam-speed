@@ -1,5 +1,5 @@
 open Speed
-open Effect_dsl
+open Dsl.Effect.Simple
 open Assertions
 open Utils
 

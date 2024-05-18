@@ -1,6 +1,6 @@
 open Speed
 open Assertions
-open Effect_dsl
+open Dsl.Effect.Simple
 open Utils
 open Null_formatter
 

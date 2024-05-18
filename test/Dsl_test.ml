@@ -1,5 +1,5 @@
 open Speed.Domain
-open Speed.Dsl
+open Speed.Dsl.List
 open Speed.Assertions
 open! Utils;;
 

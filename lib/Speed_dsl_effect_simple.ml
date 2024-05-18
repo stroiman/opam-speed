@@ -1,5 +1,4 @@
 module Domain = Speed_domain
-module Dsl = Speed_dsl
 
 module type ROOT_SUITE = sig
   type t
@@ -47,6 +46,6 @@ struct
   let root_context name f = run_root (fun _ -> context name f)
 end
 
-module Sync = Make (Domain.Sync) (Dsl.Sync)
-module LwtEffectDsl = Make (Domain.LwtDomain) (Dsl.LwtDsl)
+module Sync = Make (Domain.Sync) (Speed_dsl_list.Sync)
+module LwtEffectDsl = Make (Domain.LwtDomain) (Speed_dsl_list.LwtDsl)
 include Sync

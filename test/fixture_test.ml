@@ -1,7 +1,7 @@
 open Speed
 open Runner
 open Assertions
-open Effect_dsl
+open Speed.Dsl.Effect.Simple
 open Utils.Null_formatter
 
 type Speed.metadata += IntValue of int
@@ -187,7 +187,7 @@ root_context "Fixture" (fun _ ->
   test "It works with the DSL" (fun _ ->
     let actual = ref 0 in
     let suite =
-      Effect_dsl_2.(
+      Speed.Dsl.Effect.(
         parse (fun s ->
           s.context "root" (fun s ->
             s.fixture "child" ~setup:[%mx IntValue 42] (fun s ->

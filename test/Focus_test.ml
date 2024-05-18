@@ -1,6 +1,6 @@
 open Speed
 open Assertions
-open Effect_dsl
+open Dsl.Effect.Simple
 open Runner
 open Utils
 open Null_formatter;;
@@ -41,7 +41,7 @@ root_context "Focused tests" (fun _ ->
     let ex2 = ref false in
     let sync_suite = Dsl.Sync.(parse [test "1" [%f_ ex1 := true]]) in
     let lwt_suite =
-      Speed.Dsl.LwtDsl.(
+      Speed.Dsl.List.LwtDsl.(
         parse
           [
             test ~focus:true "2"

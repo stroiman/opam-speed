@@ -1,5 +1,4 @@
 module Domain = Speed_domain
-module Dsl = Speed_dsl
 
 type metadata = Speed_metadata.t
 
@@ -67,6 +66,6 @@ struct
   let parse (f : unit builder -> unit) = run f @@ make_suite ()
 end
 
-module Sync = Make (Domain.Sync) (Dsl.Sync)
-module LwtEffectDsl = Make (Domain.LwtDomain) (Dsl.LwtDsl)
+module Sync = Make (Domain.Sync) (Speed_dsl_list.Sync)
+module LwtEffectDsl = Make (Domain.LwtDomain) (Speed_dsl_list.LwtDsl)
 include Sync

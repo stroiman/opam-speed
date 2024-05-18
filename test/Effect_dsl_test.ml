@@ -1,16 +1,16 @@
 open Speed
 open Domain
-open Dsl
+open Dsl.List
 open Assertions
 open Utils;;
 
-Speed.Dsl.root_context "Effect DSL"
+root_context "Effect DSL"
   [
     it "Should parse a two tests"
       begin
         fun _ ->
           let suite =
-            Effect_dsl.(
+            Dsl.Effect.Simple.(
               parse (fun () ->
                 test "dummy" passing_test;
                 test "dummy" passing_test
@@ -23,7 +23,7 @@ Speed.Dsl.root_context "Effect DSL"
       begin
         fun _ ->
           let suite =
-            Effect_dsl.(
+            Dsl.Effect.Simple.(
               parse (fun () ->
                 context "A" (fun _ ->
                   test "a1" passing_test;

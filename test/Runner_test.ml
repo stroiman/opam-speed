@@ -1,4 +1,4 @@
-open Speed.Effect_dsl
+open Speed.Dsl.Effect.Simple
 open Speed.Assertions
 open Speed.Runner
 open Utils
