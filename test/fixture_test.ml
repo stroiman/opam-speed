@@ -4,7 +4,7 @@ open Assertions
 open Effect_dsl
 open Utils.Null_formatter
 
-type Domain.metadata += IntValue of int
+type Speed.metadata += IntValue of int
 
 let get_value = function
   | IntValue x -> Some x

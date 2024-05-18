@@ -4,3 +4,6 @@ module Effect_dsl = Speed_effect_dsl
 module Effect_dsl_2 = Speed_effect_dsl_2
 module Dsl = Speed_dsl
 module Runner = Speed_runner
+module Metadata = Speed_metadata
+
+type metadata = Metadata.t = ..

@@ -1,13 +1,8 @@
-type metadata = ..
-
-module Metadata_list = struct
-  (* This function mostly exists for the purpose of the ppx rewriter, making
-     it generate code that depends only on this library *)
-  let find_map = Base.List.find_map
-end
+(* type metadata = Speed_metadata.metadata.t *)
+module Metadata = Speed_metadata
 
 type 'a test_input = {
-  metadata: metadata list;
+  metadata: Metadata.t list;
   subject: 'a;
 }
 
@@ -20,14 +15,14 @@ module type DOMAIN = sig
   type 'a example = {
     name: string;
     focus: bool;
-    metadata: metadata list;
+    metadata: Metadata.t list;
     f: 'a test_function;
   }
 
   type 'a t = {
     name: string option;
     child_groups: 'a child_suite list;
-    metadata: metadata list;
+    metadata: Metadata.t list;
     examples: 'a example list;
     has_focused: bool;
   }
@@ -52,14 +47,14 @@ module Make (R : TEST_RESULT) = struct
   type 'a example = {
     name: string;
     focus: bool;
-    metadata: metadata list;
+    metadata: Metadata.t list;
     f: 'a test_function;
   }
 
   type 'a t = {
     name: string option;
     child_groups: 'a child_suite list;
-    metadata: metadata list;
+    metadata: Metadata.t list;
     examples: 'a example list;
     has_focused: bool;
   }

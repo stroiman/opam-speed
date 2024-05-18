@@ -1,5 +1,5 @@
-(* open StdLabels *)
 open Ppxlib
+(* open StdLabels *)
 (* open Ppxlib.Ast_builder.Default *)
 
 let ppx_fun_expander_args ~loc (expr : Parsetree.expression) =
@@ -9,7 +9,7 @@ let ppx_fun_expander_args ~loc (expr : Parsetree.expression) =
     let pattern = Ast.ppat_construct id (Some (Ast.pvar "x")) in
     let lookup =
       [%expr
-        Speed.Domain.Metadata_list.find_map ~f:(function
+        Speed.Metadata.List.find_map ~f:(function
           | [%p pattern] -> Some x
           | _ -> None
           )]

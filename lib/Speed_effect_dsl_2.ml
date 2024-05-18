@@ -1,6 +1,8 @@
 module Domain = Speed_domain
 module Dsl = Speed_dsl
 
+type metadata = Speed_metadata.t
+
 module type ROOT_SUITE = sig
   type t
 
@@ -12,16 +14,15 @@ struct
   open Domain.MakeFunctions (D)
 
   type 'a builder = {
-    context:
-      ?metadata:Domain.metadata list -> string -> ('a builder -> unit) -> unit;
+    context: ?metadata:metadata list -> string -> ('a builder -> unit) -> unit;
     fixture:
       'b.
-      ?metadata:Domain.metadata list ->
+      ?metadata:metadata list ->
       setup:('a Domain.test_input -> 'b) ->
       string ->
       ('b builder -> unit) ->
       unit;
-    test: ?metadata:Domain.metadata list -> string -> 'a D.test_function -> unit;
+    test: ?metadata:metadata list -> string -> 'a D.test_function -> unit;
   }
 
   module MakeTypes (C : sig

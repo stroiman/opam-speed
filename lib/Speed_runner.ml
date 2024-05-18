@@ -2,6 +2,8 @@ module Domain = Speed_domain
 module Dsl = Speed_dsl
 module Assertions = Speed_assertions
 
+type metadata = Speed_metadata.t
+
 type suite_result = {
   success: bool;
   print_break: bool;
@@ -186,7 +188,7 @@ struct
     run ctx cont
   ;;
 
-  let rec run_setup : 'b. Domain.metadata list -> (unit, 'b) setup_stack -> 'b =
+  let rec run_setup : 'b. metadata list -> (unit, 'b) setup_stack -> 'b =
     fun metadata -> function
     | Root f -> f Domain.{ metadata; subject= () }
     | Stack (f, g) -> g { metadata; subject= run_setup metadata f }
@@ -206,7 +208,7 @@ struct
       Format.formatter ->
       suite_result ->
       a D.t ->
-      Domain.metadata list ->
+      metadata list ->
       (unit, a) setup_stack ->
       'b continuation
     =
