@@ -1,3 +1,6 @@
+module Domain = Speed_domain
+module Dsl = Speed_dsl
+
 module type ROOT_SUITE = sig
   type t
 

@@ -1,4 +1,3 @@
-open Speed
 open Speed.Effect_dsl
 open Speed.Assertions
 open Speed.Runner

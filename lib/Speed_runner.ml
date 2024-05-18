@@ -1,3 +1,7 @@
+module Domain = Speed_domain
+module Dsl = Speed_dsl
+module Assertions = Speed_assertions
+
 type suite_result = {
   success: bool;
   print_break: bool;

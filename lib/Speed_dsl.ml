@@ -1,3 +1,5 @@
+module Domain = Speed_domain
+
 module Make (T : Domain.DOMAIN) = struct
   open Domain.MakeFunctions (T)
 
