@@ -7,8 +7,7 @@ tools; none of them seem to match my personal philosophy.
 
 It seems that they have a lot of focus on "testing", which may seem obvious, but
 that is far from what a testing tool is for me. When focusing on testing you
-are typically _adding tests_ to existing code, often guided by where you most
-fear things might break in the future.
+are typically guided by what can break.
 
 This is nowhere near how I work. For me, a testing tool is merely a series of
 microtasks executed everytime I save a file; the goal being providing fast
@@ -21,8 +20,8 @@ my productivity by huge amounts.
 The fact that I have tests to verify behaviour later on is a secondary BUT STILL
 important side effect.
 
-But the test tool serves an active role in me working with the code; and I did
-not find that the existing options supported this rolw very well.
+But the test tool serves an active role in me process of working with code; and
+I did not find that the existing options supported this role very well.
 
 > [!NOTE]
 > Looking at the origin of the git history, the initial commit is creating a
@@ -30,7 +29,8 @@ not find that the existing options supported this rolw very well.
 > feedback loop is initially just writing to std-out. This is fine for this
 > purpose as the goal right now is feedback; not a CI-ready verification tool.
 
-> [!NOTE] This tool became self-testing from the 6th commit; a new personal
+> [!NOTE]
+> This tool became self-testing from the 6th commit; a new personal
 > record (previous record was 11th commit). And that is without squashing
 > commits to artificially work towards this; but I was focusing specifically on
 > this goal.
@@ -38,8 +38,8 @@ not find that the existing options supported this rolw very well.
 ## The name?
 
 Well, before writing this, I did use Alcotest for a short while; and inspired by
-that, the word "amphetamine" popped into mind (which is incidentally also an
-ingredient in some ADHD medicine).
+that, the word "amphetamine" popped into mind (which is incidentally also
+sometimes used in the treatment of ADHD).
 
 "Speed" is slang for aphetamine, and I found that to be very fitting; as the
 _primary goal_ of a test tool it to _increase my speed_.
