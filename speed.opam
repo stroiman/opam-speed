@@ -19,7 +19,7 @@ depends: [
   "ppxlib"
   "lwt"
   "lwt_ppx"
-  "ppx_jane"
+  "ppx_jane" {with-test}
   "odoc" {with-doc}
 ]
 build: [

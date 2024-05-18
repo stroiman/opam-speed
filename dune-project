@@ -23,7 +23,7 @@
 first. This is inspired by other tools bourn out of the BDD philosophy. It
 draws inspiration from the JavaScript libraries, mocha/jasmine/jest, as well as 
 the Ruby library RSpec")
- (depends (ocaml (>= 5)) dune ocolor ppxlib lwt lwt_ppx ppx_jane)
+ (depends (ocaml (>= 5)) dune ocolor ppxlib lwt lwt_ppx (ppx_jane :with-test))
  (tags
   (tdd testing "unit-testing" bdd)))
 
