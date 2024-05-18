@@ -64,6 +64,8 @@ struct
   ;;
 
   let parse (f : unit builder -> unit) = run f @@ make_suite ()
+  let run_root f = RootSuite.root_suite := run f !RootSuite.root_suite
+  let root_context name f = run_root (fun s -> s.context name f)
 end
 
 module Sync = Make (Domain.Sync) (Speed_dsl_list.Sync)

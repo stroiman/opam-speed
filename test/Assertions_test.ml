@@ -118,9 +118,8 @@ run_root (fun _ ->
       );
 
       test "Should fail on second matcher fails" (fun _ ->
-        Ok "WRONG value"
-        |> run_matcher @@ (be_ok >=> equal_string "value")
-        |> should be_error
+        let expectation = be_ok >=> equal_string "value" in
+        Ok "WRONG value" |> run_matcher expectation |> should be_error
       );
 
       test "Should succeed on both matchers succeed" (fun _ ->
