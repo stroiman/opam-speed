@@ -8,7 +8,7 @@ draws inspiration from the JavaScript libraries, mocha/jasmine/jest, as well as
 the Ruby library RSpec"""
 maintainer: ["Peter Strøiman"]
 authors: ["Peter Strøiman"]
-license: "APACHE"
+license: "MIT"
 tags: ["tdd" "testing" "unit-testing" "bdd"]
 homepage: "https://github.com/stroiman/opam-speed"
 bug-reports: "https://github.com/stroiman/opam-speed/issues"

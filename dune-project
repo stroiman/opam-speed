@@ -11,7 +11,7 @@
 
 (maintainers "Peter Strøiman")
 
-(license APACHE)
+(license MIT)
 
 ; (documentation https://url/to/documentation)
 
