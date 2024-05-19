@@ -12,3 +12,4 @@ single-case=compact
 wrap-fun-args=true
 space-around-lists=false
 margin=80
+let-binding-spacing=compact

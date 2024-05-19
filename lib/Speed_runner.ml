@@ -53,7 +53,6 @@ module ExampleRunner = struct
                  (Format.dprintf "@{<orange>%s@}" (Printexc.to_string exn))
               )
         )
-    ;;
   end
 
   module LwtRunner = struct
@@ -76,7 +75,6 @@ module ExampleRunner = struct
             cont ctx
               (FailureWithFormat (Format.dprintf "%s" (Printexc.to_string exn)))
         )
-    ;;
   end
 end
 
@@ -92,7 +90,6 @@ module Reporter = struct
       no_of_failing_examples= 0;
       no_of_passing_examples= 0;
     }
-  ;;
 
   let is_success { success; _ } = success
 end
@@ -133,7 +130,6 @@ struct
   and filter_suite_mixed : 'a. 'a child_suite -> 'a child_suite = function
     | Child { child; setup } -> Child { setup; child= filter_suite child }
     | Context { child } -> Context { child= filter_suite child }
-  ;;
 
   let start_group name fmt ctx run cont =
     let print_break =
@@ -148,7 +144,6 @@ struct
       if Option.is_some name then Format.fprintf fmt "@]";
       ctx |> cont
     )
-  ;;
 
   let start_example name fmt ctx run cont =
     if ctx.print_break then Format.fprintf fmt "@,";
@@ -186,13 +181,11 @@ struct
       cont outcome
     in
     run ctx cont
-  ;;
 
   let rec run_setup : 'b. metadata list -> (unit, 'b) setup_stack -> 'b =
     fun metadata -> function
     | Root f -> f Domain.TestInput.{ metadata; subject= () }
     | Stack (f, g) -> g { metadata; subject= run_setup metadata f }
-  ;;
 
   let run_ex fmt ctx (example : 'a D.example) metadata setups =
     let test_input = run_setup (example.metadata @ metadata) setups in
@@ -201,7 +194,6 @@ struct
     in
 
     start_example example.name fmt ctx run
-  ;;
 
   let rec run_child_suite
     : type a.
@@ -245,7 +237,6 @@ struct
           iter (List.rev suite.child_groups) ctx cont
         )
         cont
-  ;;
 
   let run_suite ?(fmt = Ocolor_format.raw_std_formatter) ?(filter = false)
     ?(ctx = empty_suite_result) s cont
@@ -262,7 +253,6 @@ struct
           Format.pp_print_flush fmt ();
           cont result
         )
-  ;;
 
   let wait = Runner.wait
   let run_suite_return ?fmt suite = run_suite ?fmt suite Runner.return
@@ -290,14 +280,12 @@ struct
       failing;
     Format.pp_print_flush fmt ();
     exit exit_code
-  ;;
 
   (** This runs the test suite and exits the program. If the test suite is
       successful, it will exit with exit code zero, otherwise it will exit with
       exit code 1. *)
   let has_focused = function
     | suite -> suite.has_focused
-  ;;
 end
 
 module SyncRunner = Make (Domain.Sync) (ExampleRunner.SyncRunner)
@@ -315,7 +303,6 @@ let run_suites ~fmt sync_suite lwt_suite =
        LwtRunner.run_suite ~fmt ~ctx ~filter:has_focused lwt_suite Lwt.return
      )
     )
-;;
 
 (** This runs the test suite and exits the program. If the test suite is
     successful, it will exit with exit code zero, otherwise it will exit with
@@ -324,4 +311,3 @@ let run_root_suites () =
   let fmt = Ocolor_format.raw_std_formatter in
   let result = run_suites ~fmt !Dsl.Sync.root_suite !Dsl.LwtDsl.root_suite in
   consume_test_result fmt result
-;;

@@ -61,7 +61,6 @@ struct
     let test ?metadata name f = perform (Op (add_example ?metadata name f)) in
 
     loop (fiber f) { fixture; context; test } ctx
-  ;;
 
   let parse (f : unit builder -> unit) = run f @@ make_suite ()
   let run_root f = RootSuite.root_suite := run f !RootSuite.root_suite

@@ -14,7 +14,6 @@ module Make (T : Domain.DOMAIN) = struct
 
   let register examples =
     root_suite := !root_suite |> add_child_group (parse examples)
-  ;;
 
   let root_context name specs = register [context name specs]
 end

@@ -32,7 +32,6 @@ struct
         }
     in
     loop (fiber f) () ctx
-  ;;
 
   let parse f = run f @@ make_suite ()
   let run_root f = RootSuite.root_suite := run f !RootSuite.root_suite
@@ -41,7 +40,6 @@ struct
 
   let context name specs =
     perform (Op (make name |> run specs |> add_child_group))
-  ;;
 
   let root_context name f = run_root (fun _ -> context name f)
 end

@@ -16,7 +16,6 @@ let match_failure ?(pp : print option) x =
   match pp with
   | None -> Error (`AssertionError x)
   | Some x -> Error (`AssertionErrorWithFormat x)
-;;
 
 let equality_failure expected actual pp =
   match_failure
@@ -25,39 +24,32 @@ let equality_failure expected actual pp =
          pp actual
       )
     ()
-;;
 
 let be_true = function
   | true -> match_success true
   | false -> match_failure ()
-;;
 
 let be_ok = function
   | Ok x -> match_success x
   | Error _ -> match_failure ()
-;;
 
 let be_error = function
   | Error x -> match_success x
   | Ok _ -> match_failure ()
-;;
 
 let be_false = function
   | false -> match_success false
   | true -> match_failure ()
-;;
 
 let equal_int expected actual =
   match Int.equal actual expected with
   | true -> Ok actual
   | false -> equality_failure expected actual Format.pp_print_int
-;;
 
 let equal_string expected actual =
   match String.equal expected actual with
   | true -> match_success actual
   | false -> equality_failure expected actual Format.pp_print_string
-;;
 
 let is_substring actual search =
   let c = String.get search 0 in
@@ -74,7 +66,6 @@ let is_substring actual search =
       else iter (index + 1)
   in
   iter 0
-;;
 
 let contain substring actual =
   match is_substring actual substring with
@@ -83,7 +74,6 @@ let contain substring actual =
     equality_failure
       (Format.sprintf "string containing '%s'" substring)
       actual Format.pp_print_string
-;;
 
 let run_matcher matcher actual = matcher actual
 
@@ -108,9 +98,6 @@ let expect ?name actual assertion =
       Format.fprintf f "@]"
     in
     raise (FormattedAssertionError errorFormat)
-;;
 
 let ( >=> ) m1 m2 actual = Result.bind (m1 actual) m2
-(* actual |> m1 |> Base.Result.bind ~f:m2 *)
-
 let should ?name assertion actual = expect ?name actual assertion
