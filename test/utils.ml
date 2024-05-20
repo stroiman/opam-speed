@@ -7,7 +7,6 @@ let addExample ?(name = "_anonymous test_") = Speed.Domain.add_example name
 
 let add_child_group ?name spec =
   Speed.Domain.(add_child_group (make_suite ?name () |> spec))
-;;
 
 (* { *)
 (*   ctx with *)
@@ -28,14 +27,12 @@ let make_ref_string_printer s =
     s := current ^ appended
   in
   Format.make_formatter out (fun _ -> ())
-;;
 
 let make_string_printer () =
   let s = ref "" in
   let get_string () = !s in
   let printer = make_ref_string_printer s in
   printer, get_string
-;;
 
 let make_string_ref_formatter = make_ref_string_printer
 
@@ -44,4 +41,5 @@ let get_printed_string pp =
   pp fmt;
   Format.pp_print_flush fmt ();
   get ()
-;;
+
+let run_suite_silent = Speed.Runner.run_suite ~fmt:Null_formatter.fmt

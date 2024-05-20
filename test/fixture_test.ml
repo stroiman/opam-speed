@@ -1,8 +1,7 @@
 open Speed
-open Runner
 open Assertions
 open Speed.Dsl.Effect.Simple
-open Utils.Null_formatter
+open Utils
 
 type Speed.metadata += IntValue of int
 
@@ -22,7 +21,7 @@ root_context "Fixture" (fun _ ->
              (add_example "test" (fun { subject; _ } -> actual := subject))
       )
     in
-    let _result = run_suite ~fmt suite in
+    let _result = run_suite_silent suite in
     !actual |> should @@ equal_int 42
   );
 
@@ -42,7 +41,7 @@ root_context "Fixture" (fun _ ->
                 )
            )
     )
-    |> run_suite ~fmt
+    |> run_suite_silent
     |> ignore;
     !actual |> should @@ equal_int 123;
     ()
@@ -66,7 +65,7 @@ root_context "Fixture" (fun _ ->
             )
            )
     )
-    |> run_suite ~fmt
+    |> run_suite_silent
     |> ignore;
     !actual |> should @@ equal_int 123;
     ()
@@ -86,7 +85,7 @@ root_context "Fixture" (fun _ ->
             )
            )
     )
-    |> run_suite ~fmt
+    |> run_suite_silent
     |> ignore;
     !actual |> should @@ equal_int 123;
     ()
@@ -103,7 +102,7 @@ root_context "Fixture" (fun _ ->
                )
               )
        )
-       |> run_suite ~fmt
+       |> run_suite_silent
        |> ignore;
        !actual |> should @@ equal_int 123;
        ()
@@ -124,7 +123,7 @@ root_context "Fixture" (fun _ ->
                   (add_example "test" (fun { subject; _ } -> actual := subject))
            )
     )
-    |> run_suite ~fmt
+    |> run_suite_silent
     |> ignore;
     !actual |> should @@ equal_int 123;
     ()
@@ -148,7 +147,7 @@ root_context "Fixture" (fun _ ->
                   )
            )
     )
-    |> run_suite ~fmt
+    |> run_suite_silent
     |> ignore;
     !actual |> should @@ equal_int 123;
     ()
@@ -174,7 +173,7 @@ root_context "Fixture" (fun _ ->
                   )
            )
     )
-    |> run_suite ~fmt
+    |> run_suite_silent
     |> ignore;
     !actual |> should @@ equal_int 123;
     ()
@@ -195,7 +194,7 @@ root_context "Fixture" (fun _ ->
         )
       )
     in
-    suite |> run_suite ~fmt |> ignore;
+    suite |> run_suite_silent |> ignore;
     !actual |> should @@ equal_int 123;
     ()
   );
@@ -215,7 +214,7 @@ root_context "Fixture" (fun _ ->
         )
       )
     in
-    suite |> run_suite ~fmt |> ignore;
+    suite |> run_suite_silent |> ignore;
     !actual |> should @@ equal_int 123;
     ()
   )
