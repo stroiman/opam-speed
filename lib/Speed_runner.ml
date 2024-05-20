@@ -199,8 +199,6 @@ struct
     | Child { child; setup } -> Child { setup; child= filter_suite child }
     | Context { child } -> Context { child= filter_suite child }
 
-  type so = string option [@@deriving show]
-
   let start_group name print_break_after fmt run cont =
     ( match name with
       | None -> ()
