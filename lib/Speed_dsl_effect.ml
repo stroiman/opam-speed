@@ -19,6 +19,7 @@ struct
       string ->
       ('a builder -> unit) ->
       unit;
+    setup: 'b. ('a Domain.test_input -> 'b) -> ('b builder -> unit) -> unit;
     fixture:
       'b.
       ?focus:bool ->
@@ -61,12 +62,13 @@ struct
     let fixture ?focus ?metadata ~setup name specs =
       perform (Op (add_fixture ?focus ?metadata ~name ~setup @@ run specs))
     in
+    let setup setup specs = perform (Op (add_fixture ~setup @@ run specs)) in
     let context ?focus ?metadata name specs =
       perform (Op (add_context ?focus ?metadata name (run specs)))
     in
     let test ?metadata name f = perform (Op (add_example ?metadata name f)) in
 
-    loop (fiber f) { fixture; context; test } ctx
+    loop (fiber f) { fixture; setup; context; test } ctx
 
   let parse (f : unit builder -> unit) = run f @@ make_suite ()
   let run_root f = RootSuite.root_suite := run f !RootSuite.root_suite
