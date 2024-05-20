@@ -294,23 +294,21 @@ struct
           let cont ctx = run_examples (fun r -> cont @@ join_result r ctx) in
           let print_break_after = List.length suite.examples > 0 in
           let rec iter groups ctx =
+            let run_child print_break_after child setups cont =
+              match child with
+              | Child { child; setup } ->
+                let setups = Stack (setups, setup) in
+                run_child_suite fmt print_break_after ctx child metadata setups
+                  cont
+              | Context { child } ->
+                run_child_suite fmt print_break_after ctx child metadata setups
+                  cont
+            in
             match groups with
             | [] -> cont ctx
-            | Child { child; setup= child_setup } :: [] ->
-              let setups = Stack (setups, child_setup) in
-              run_child_suite fmt print_break_after ctx child metadata setups
-                cont
-            | Context { child } :: [] ->
-              run_child_suite fmt print_break_after ctx child metadata setups
-                cont
-            | Child { child; setup= child_setup } :: xs ->
-              let setups = Stack (setups, child_setup) in
-              run_child_suite fmt false ctx child metadata setups (fun ctx ->
-                Format.pp_print_cut fmt ();
-                iter xs ctx
-              )
-            | Context { child } :: xs ->
-              run_child_suite fmt false ctx child metadata setups (fun ctx ->
+            | child :: [] -> run_child print_break_after child setups cont
+            | child :: xs ->
+              run_child false child setups (fun ctx ->
                 Format.pp_print_cut fmt ();
                 iter xs ctx
               )
