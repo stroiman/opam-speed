@@ -276,21 +276,21 @@ struct
     =
     fun fmt print_break_after suite metadata setups cont ->
     let metadata = suite.metadata @ metadata in
-    let run_examples acc cont =
-      suite.examples
-      |> List.rev
-      |> List.map (fun ex -> run_ex ex metadata setups Runner.return)
-      |> List.fold_left (fun acc a -> Runner.join acc a) acc
-      |> Runner.bind cont
-    in
-    start_group suite.name print_break_after fmt
-      (fun cont ->
-        let cont ctx =
-          run_examples
-            (Runner.return (make_result ~fmt ()))
-            (fun r -> cont @@ join_result r ctx)
+    let run_group cont =
+      let run_examples ctx =
+        let do_run_examples acc cont =
+          suite.examples
+          |> List.rev
+          |> List.map (fun ex -> run_ex ex metadata setups Runner.return)
+          |> List.fold_left (fun acc a -> Runner.join acc a) acc
+          |> Runner.bind cont
         in
-        let print_break_after = List.length suite.examples > 0 in
+        do_run_examples
+          (Runner.return (make_result ~fmt ()))
+          (fun r -> cont @@ join_result r ctx)
+      in
+      let run_child_groups run_examples =
+        let _print_break_after = List.length suite.examples > 0 in
         let rec iter groups ctx =
           let run_child print_break_after child setups cont =
             let cont c = cont @@ join_result ctx c in
@@ -302,18 +302,17 @@ struct
               run_child_suite fmt print_break_after child metadata setups cont
           in
           match groups with
-          | [] -> cont ctx
-          | child :: [] -> run_child print_break_after child setups cont
-          | child :: xs ->
-            run_child false child setups (fun ctx ->
-              Format.pp_print_cut fmt ();
-              iter xs ctx
-            )
+          | [] -> run_examples ctx
+          | child :: [] ->
+            run_child _print_break_after child setups run_examples
+          | child :: xs -> run_child true child setups (fun ctx -> iter xs ctx)
         in
         let empty_result = make_result ~fmt () in
         iter (List.rev suite.child_groups) empty_result
-      )
-      cont
+      in
+      run_child_groups (fun ctx -> run_examples ctx)
+    in
+    start_group suite.name print_break_after fmt run_group cont
 
   let run_suite ?(fmt = Ocolor_format.raw_std_formatter) ?(filter = false)
     ?(ctx = empty_suite_result) s cont
