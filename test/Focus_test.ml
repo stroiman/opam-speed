@@ -57,5 +57,31 @@ root_context "Focused tests" (fun _ ->
     in
     !ex1 |> should ~name:"Ex1 run" @@ be_false;
     !ex2 |> should ~name:"Ex2 run" @@ be_true
+  );
+
+  test "Should run tests inside a focused group" (fun _ ->
+    let ex1 = ref false in
+    let ex2 = ref false in
+    let ex3 = ref false in
+    let ex4 = ref false in
+    let suite =
+      Speed.Dsl.List.(
+        parse
+          [
+            context "Group 1" [test "Ex 1" (fun _ -> ex1 := true)];
+            context ~focus:true "Group 2"
+              [
+                test "Ex 2" (fun _ -> ex2 := true);
+                test "Ex 3" (fun _ -> ex3 := true);
+              ];
+            context "Group 3" [test "Ex 3" (fun _ -> ex4 := true)];
+          ]
+      )
+    in
+    run_suite suite |> ignore;
+    !ex1 |> should be_false;
+    !ex2 |> should be_true;
+    !ex3 |> should be_true;
+    !ex4 |> should be_false
   )
 )

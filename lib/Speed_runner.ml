@@ -165,21 +165,27 @@ struct
 
   let rec filter_suite : 'a. 'a D.t -> 'a D.t = function
     | suite ->
-      let is_not_empty = function
-        | Child { child= suite; _ } ->
-          suite.examples |> List.length > 0
-          || suite.child_groups |> List.length > 0
-        | Context { child= suite } ->
-          suite.examples |> List.length > 0
-          || suite.child_groups |> List.length > 0
-      in
-      let examples = suite.examples |> List.filter (fun x -> x.focus) in
-      let child_groups =
-        suite.child_groups
-        |> List.map filter_suite_mixed
-        |> List.filter is_not_empty
-      in
-      { suite with examples; child_groups }
+      if suite.focus
+      then suite
+      else (
+        let is_not_empty = function
+          | Child { child= suite; _ } ->
+            suite.examples |> List.length > 0
+            || suite.child_groups |> List.length > 0
+          | Context { child= suite } ->
+            suite.examples |> List.length > 0
+            || suite.child_groups |> List.length > 0
+        in
+        let examples =
+          suite.examples |> List.filter (fun (x : 'a D.example) -> x.focus)
+        in
+        let child_groups =
+          suite.child_groups
+          |> List.map filter_suite_mixed
+          |> List.filter is_not_empty
+        in
+        { suite with examples; child_groups }
+      )
 
   and filter_suite_mixed : 'a. 'a child_suite -> 'a child_suite = function
     | Child { child; setup } -> Child { setup; child= filter_suite child }

@@ -9,7 +9,10 @@ module Make (T : Domain.DOMAIN) = struct
   let it = test
   let parse_to_ctx specs ctx = specs |> List.fold_left (fun a b -> b a) ctx
   let parse specs = parse_to_ctx specs @@ make_suite ()
-  let context name spec ctx = add_context name (parse_to_ctx spec) ctx
+
+  let context ?focus name spec ctx =
+    add_context ?focus name (parse_to_ctx spec) ctx
+
   let root_suite : t ref = ref (make_suite ())
 
   let register examples =

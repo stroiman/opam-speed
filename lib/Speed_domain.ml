@@ -25,6 +25,7 @@ module type DOMAIN = sig
 
   type 'a t = {
     name: string option;
+    focus: bool;
     child_groups: 'a child_suite list;
     metadata: Metadata.t list;
     examples: 'a example list;
@@ -55,8 +56,13 @@ module Make (R : TEST_RESULT) = struct
     f: 'a test_function;
   }
 
+  module Example = struct
+    let has_focus ex = ex.focus
+  end
+
   type 'a t = {
     name: string option;
+    focus: bool;
     child_groups: 'a child_suite list;
     metadata: Metadata.t list;
     examples: 'a example list;
@@ -78,13 +84,16 @@ module MakeFunctions (D : DOMAIN) = struct
   let empty =
     {
       name= None;
+      focus= false;
       child_groups= [];
       metadata= [];
       examples= [];
       has_focused= false;
     }
 
-  let make_suite ?name ?(metadata = []) () = { empty with name; metadata }
+  let make_suite ?name ?(focus = false) ?(metadata = []) () =
+    { empty with name; metadata; focus }
+
   let make name = make_suite ~name ()
 
   let add_example ?(focus = false) ?(metadata = []) name f = function
@@ -97,17 +106,17 @@ module MakeFunctions (D : DOMAIN) = struct
 
   let add_child child parent =
     match child with
-    | Child { child= { has_focused; _ }; _ } ->
+    | Child { child= { has_focused; focus; _ }; _ } ->
       {
         parent with
         child_groups= child :: parent.child_groups;
-        has_focused= parent.has_focused || has_focused;
+        has_focused= parent.has_focused || has_focused || focus;
       }
-    | Context { child= { has_focused; _ } } ->
+    | Context { child= { has_focused; focus; _ } } ->
       {
         parent with
         child_groups= child :: parent.child_groups;
-        has_focused= parent.has_focused || has_focused;
+        has_focused= parent.has_focused || has_focused || focus;
       }
 
   (* If I add ?setup as input, it gets inferred to `a test_input -> a` instead
@@ -122,8 +131,8 @@ module MakeFunctions (D : DOMAIN) = struct
     let child = f (make_suite ?name ?metadata ()) in
     add_child (Child { child; setup })
 
-  let add_context ?metadata name f =
-    let child_group = f (make_suite ~name ?metadata ()) in
+  let add_context ?focus ?metadata name f =
+    let child_group = f (make_suite ~name ?focus ?metadata ()) in
     add_child_group child_group
 
   let get_example_count grp =
