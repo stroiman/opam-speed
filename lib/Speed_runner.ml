@@ -269,13 +269,12 @@ struct
     : type a.
       Format.formatter ->
       bool ->
-      suite_result ->
       a D.t ->
       metadata list ->
       (unit, a) setup_stack ->
       'b continuation
     =
-    fun fmt print_break_after ctx suite metadata setups cont ->
+    fun fmt print_break_after suite metadata setups cont ->
     let metadata = suite.metadata @ metadata in
     let run_examples acc cont =
       suite.examples
@@ -294,14 +293,13 @@ struct
         let print_break_after = List.length suite.examples > 0 in
         let rec iter groups ctx =
           let run_child print_break_after child setups cont =
+            let cont c = cont @@ join_result ctx c in
             match child with
             | Child { child; setup } ->
               let setups = Stack (setups, setup) in
-              run_child_suite fmt print_break_after ctx child metadata setups
-                cont
+              run_child_suite fmt print_break_after child metadata setups cont
             | Context { child } ->
-              run_child_suite fmt print_break_after ctx child metadata setups
-                cont
+              run_child_suite fmt print_break_after child metadata setups cont
           in
           match groups with
           | [] -> cont ctx
@@ -312,7 +310,8 @@ struct
               iter xs ctx
             )
         in
-        iter (List.rev suite.child_groups) ctx
+        let empty_result = make_result ~fmt () in
+        iter (List.rev suite.child_groups) empty_result
       )
       cont
 
@@ -325,12 +324,12 @@ struct
       let filter = filter || suite.has_focused in
       let suite = if filter then filter_suite s else s in
       let x =
-        run_child_suite fmt false ctx suite []
+        run_child_suite fmt false suite []
           (Root (fun _ -> ()))
           (fun result ->
             Format.pp_close_box fmt ();
             Format.pp_print_flush fmt ();
-            cont result
+            cont (join_result ctx result)
           )
       in
       x
