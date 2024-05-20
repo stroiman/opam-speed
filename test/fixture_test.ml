@@ -14,16 +14,12 @@ let get_value = function
 root_context "Fixture" (fun _ ->
   test "Initialises the fixture" (fun _ ->
     let actual = ref 0 in
-
     let suite =
       Domain.(
         make_suite ()
         |> add_fixture
              ~setup:(fun _ -> 42)
-             (fun suite ->
-               suite
-               |> add_example "test" (fun { subject; _ } -> actual := subject)
-             )
+             (add_example "test" (fun { subject; _ } -> actual := subject))
       )
     in
     let _result = run_suite ~fmt suite in
@@ -191,6 +187,26 @@ root_context "Fixture" (fun _ ->
         parse (fun s ->
           s.context "root" (fun s ->
             s.fixture "child" ~setup:[%mx IntValue 42] (fun s ->
+              s.test ~metadata:[IntValue 123] "Test" (fun { subject; _ } ->
+                actual := subject
+              )
+            )
+          )
+        )
+      )
+    in
+    suite |> run_suite ~fmt |> ignore;
+    !actual |> should @@ equal_int 123;
+    ()
+  );
+
+  test "It works with out a name" (fun _ ->
+    let actual = ref 0 in
+    let suite =
+      Speed.Dsl.Effect.(
+        parse (fun s ->
+          s.context "root" (fun s ->
+            s.setup [%mx IntValue 42] (fun s ->
               s.test ~metadata:[IntValue 123] "Test" (fun { subject; _ } ->
                 actual := subject
               )
