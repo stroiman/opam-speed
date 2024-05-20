@@ -278,16 +278,11 @@ struct
     let metadata = suite.metadata @ metadata in
     let run_group cont =
       let run_examples ctx =
-        let do_run_examples acc cont =
-          suite.examples
-          |> List.rev
-          |> List.map (fun ex -> run_ex ex metadata setups Runner.return)
-          |> List.fold_left (fun acc a -> Runner.join acc a) acc
-          |> Runner.bind cont
-        in
-        do_run_examples
-          (Runner.return (make_result ~fmt ()))
-          (fun r -> cont @@ join_result r ctx)
+        suite.examples
+        |> List.rev
+        |> List.map (fun ex -> run_ex ex metadata setups Runner.return)
+        |> List.fold_left (fun acc a -> Runner.join acc a) (Runner.return ctx)
+        |> Runner.bind cont
       in
       let run_child_groups run_examples =
         let _print_break_after = List.length suite.examples > 0 in
