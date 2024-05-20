@@ -5,6 +5,8 @@ module Assertions = Speed_assertions
 type metadata = Speed_metadata.t
 
 type suite_result = {
+  fmt: Format.formatter option;
+  print_break: bool;
   success: bool;
   no_of_failing_examples: int;
   no_of_passing_examples: int;
@@ -17,44 +19,50 @@ type 'a continuation = (suite_result -> 'a) -> 'a
 
 let fst (x, _) = x
 
-let print_and_drop ~pb fmt s =
-  ( match s.pp with
-    | None -> ()
-    | Some pp ->
-      if pb then Format.pp_print_cut fmt ();
-      pp fmt
-  );
-  { s with pp= None }
-
 let empty_suite_result =
   {
+    fmt= None;
+    print_break= false;
     success= true;
     no_of_failing_examples= 0;
     no_of_passing_examples= 0;
     pp= None;
   }
 
+let make_result ?fmt () = { empty_suite_result with fmt }
+
 let join_result r1 r2 =
-  {
-    success= r1.success && r2.success;
-    no_of_failing_examples=
-      r1.no_of_failing_examples + r2.no_of_failing_examples;
-    no_of_passing_examples=
-      r1.no_of_passing_examples + r2.no_of_passing_examples;
-    pp=
-      ( match r1.pp, r2.pp with
-        | Some x, Some y ->
-          Some
-            (fun fmt ->
-              x fmt;
-              Format.pp_print_cut fmt ();
-              y fmt
-            )
-        | Some x, None -> Some x
-        | None, Some y -> Some y
-        | _ -> None
-      );
-  }
+  let fmt = r1.fmt in
+  let tmp =
+    {
+      fmt;
+      print_break= r1.print_break;
+      success= r1.success && r2.success;
+      no_of_failing_examples=
+        r1.no_of_failing_examples + r2.no_of_failing_examples;
+      no_of_passing_examples=
+        r1.no_of_passing_examples + r2.no_of_passing_examples;
+      pp=
+        ( match r1.pp, r2.pp with
+          | Some x, Some y ->
+            Some
+              (fun fmt ->
+                x fmt;
+                Format.pp_print_cut fmt ();
+                y fmt
+              )
+          | Some x, None -> Some x
+          | None, Some y -> Some y
+          | _ -> None
+        );
+    }
+  in
+  match tmp.fmt, tmp.pp with
+  | Some fmt, Some pp ->
+    if tmp.print_break then Format.fprintf fmt "@,";
+    pp fmt;
+    { tmp with pp= None; print_break= true }
+  | _ -> tmp
 
 module ExampleRunner = struct
   type test_outcome =
@@ -275,24 +283,9 @@ struct
         suite.examples
         |> List.rev
         |> List.map (fun ex -> run_ex ex metadata setups Runner.return)
-        |> (function
-              | [] -> Runner.return empty_suite_result
-              | hd :: [] -> hd |> Runner.map (print_and_drop ~pb:false fmt)
-              | hd :: lst ->
-                let x =
-                  lst
-                  |> List.fold_left
-                       (fun (acc, pb) ex_result ->
-                         ( acc
-                           |> Runner.map (print_and_drop ~pb fmt)
-                           |> Runner.join ex_result,
-                           true )
-                       )
-                       (hd, false)
-                  |> fst
-                in
-                x |> Runner.map (print_and_drop ~pb:true fmt)
-             )
+        |> List.fold_left
+             (fun acc a -> Runner.join acc a)
+             (Runner.return (make_result ~fmt ()))
         |> Runner.bind cont
       in
       start_group suite.name print_break_after fmt ctx
@@ -386,9 +379,12 @@ let run_suites ~fmt sync_suite lwt_suite =
   let has_focused =
     SyncRunner.has_focused sync_suite || LwtRunner.has_focused lwt_suite
   in
+  let ctx =
+    { empty_suite_result with fmt= Some Ocolor_format.raw_std_formatter }
+  in
   Lwt_main.run
     (let ctx =
-       SyncRunner.run_suite ~fmt ~filter:has_focused sync_suite Fun.id
+       SyncRunner.run_suite ~fmt ~ctx ~filter:has_focused sync_suite Fun.id
      in
      LwtRunner.run_suite ~fmt ~ctx ~filter:has_focused lwt_suite Lwt.return
     )

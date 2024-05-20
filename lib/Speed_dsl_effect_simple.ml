@@ -41,7 +41,7 @@ struct
   let context name ?focus specs =
     perform (Op (make_suite ?focus ~name () |> run specs |> add_child_group))
 
-  let root_context name f = run_root (fun _ -> context name f)
+  let root_context ?focus name f = run_root (fun _ -> context ?focus name f)
 end
 
 module Sync = Make (Domain.Sync) (Speed_dsl_list.Sync)
