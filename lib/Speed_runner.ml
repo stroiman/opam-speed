@@ -201,12 +201,12 @@ struct
 
   type so = string option [@@deriving show]
 
-  let start_group name print_break_after fmt ctx run cont =
+  let start_group name print_break_after fmt run cont =
     ( match name with
       | None -> ()
       | Some n -> Format.fprintf fmt "@[<v2>@{<bold>•@} %s@," n
     );
-    run ctx (fun ctx ->
+    run (fun ctx ->
       if Option.is_some name
       then (
         Format.fprintf fmt "@]";
@@ -277,44 +277,44 @@ struct
     =
     fun fmt print_break_after ctx suite metadata setups cont ->
     let metadata = suite.metadata @ metadata in
-    match suite with
-    | suite ->
-      let run_examples cont =
-        suite.examples
-        |> List.rev
-        |> List.map (fun ex -> run_ex ex metadata setups Runner.return)
-        |> List.fold_left
-             (fun acc a -> Runner.join acc a)
-             (Runner.return (make_result ~fmt ()))
-        |> Runner.bind cont
-      in
-      start_group suite.name print_break_after fmt ctx
-        (fun ctx cont ->
-          let cont ctx = run_examples (fun r -> cont @@ join_result r ctx) in
-          let print_break_after = List.length suite.examples > 0 in
-          let rec iter groups ctx =
-            let run_child print_break_after child setups cont =
-              match child with
-              | Child { child; setup } ->
-                let setups = Stack (setups, setup) in
-                run_child_suite fmt print_break_after ctx child metadata setups
-                  cont
-              | Context { child } ->
-                run_child_suite fmt print_break_after ctx child metadata setups
-                  cont
-            in
-            match groups with
-            | [] -> cont ctx
-            | child :: [] -> run_child print_break_after child setups cont
-            | child :: xs ->
-              run_child false child setups (fun ctx ->
-                Format.pp_print_cut fmt ();
-                iter xs ctx
-              )
+    let run_examples acc cont =
+      suite.examples
+      |> List.rev
+      |> List.map (fun ex -> run_ex ex metadata setups Runner.return)
+      |> List.fold_left (fun acc a -> Runner.join acc a) acc
+      |> Runner.bind cont
+    in
+    start_group suite.name print_break_after fmt
+      (fun cont ->
+        let cont ctx =
+          run_examples
+            (Runner.return (make_result ~fmt ()))
+            (fun r -> cont @@ join_result r ctx)
+        in
+        let print_break_after = List.length suite.examples > 0 in
+        let rec iter groups ctx =
+          let run_child print_break_after child setups cont =
+            match child with
+            | Child { child; setup } ->
+              let setups = Stack (setups, setup) in
+              run_child_suite fmt print_break_after ctx child metadata setups
+                cont
+            | Context { child } ->
+              run_child_suite fmt print_break_after ctx child metadata setups
+                cont
           in
-          iter (List.rev suite.child_groups) ctx
-        )
-        cont
+          match groups with
+          | [] -> cont ctx
+          | child :: [] -> run_child print_break_after child setups cont
+          | child :: xs ->
+            run_child false child setups (fun ctx ->
+              Format.pp_print_cut fmt ();
+              iter xs ctx
+            )
+        in
+        iter (List.rev suite.child_groups) ctx
+      )
+      cont
 
   let run_suite ?(fmt = Ocolor_format.raw_std_formatter) ?(filter = false)
     ?(ctx = empty_suite_result) s cont
