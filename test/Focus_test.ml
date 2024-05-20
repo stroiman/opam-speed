@@ -59,29 +59,95 @@ root_context "Focused tests" (fun _ ->
     !ex2 |> should ~name:"Ex2 run" @@ be_true
   );
 
-  test "Should run tests inside a focused group" (fun _ ->
-    let ex1 = ref false in
-    let ex2 = ref false in
-    let ex3 = ref false in
-    let ex4 = ref false in
-    let suite =
-      Speed.Dsl.List.(
-        parse
-          [
-            context "Group 1" [test "Ex 1" (fun _ -> ex1 := true)];
-            context ~focus:true "Group 2"
-              [
-                test "Ex 2" (fun _ -> ex2 := true);
-                test "Ex 3" (fun _ -> ex3 := true);
-              ];
-            context "Group 3" [test "Ex 3" (fun _ -> ex4 := true)];
-          ]
-      )
-    in
-    run_suite suite |> ignore;
-    !ex1 |> should be_false;
-    !ex2 |> should be_true;
-    !ex3 |> should be_true;
-    !ex4 |> should be_false
+  context "Groups are focused" (fun _ ->
+    test "Should run the focused group" (fun _ ->
+      let ex1 = ref false in
+      let ex2 = ref false in
+      let ex3 = ref false in
+      let ex4 = ref false in
+      let suite =
+        Speed.Dsl.List.(
+          parse
+            [
+              context "Group 1" [test "Ex 1" (fun _ -> ex1 := true)];
+              context ~focus:true "Group 2"
+                [
+                  test "Ex 2" (fun _ -> ex2 := true);
+                  test "Ex 3" (fun _ -> ex3 := true);
+                ];
+              context "Group 3" [test "Ex 3" (fun _ -> ex4 := true)];
+            ]
+        )
+      in
+      run_suite suite |> ignore;
+      !ex1 |> should be_false;
+      !ex2 |> should be_true;
+      !ex3 |> should be_true;
+      !ex4 |> should be_false
+    );
+
+    test "Should run all examples inside a focused group" (fun _ ->
+      (* This is not explicitly by design. A focused test is returned
+         unfiltered. This test just documents that behaviour. It may change *)
+      let ex1 = ref false in
+      let ex2 = ref false in
+      let ex3 = ref false in
+      let suite =
+        Speed.Dsl.List.(
+          parse
+            [
+              context "Group 1" [test "Ex 1" (fun _ -> ex1 := true)];
+              context ~focus:true "Group 2"
+                [
+                  test "Ex 2" ~focus:true (fun _ -> ex2 := true);
+                  test "Ex 3" (fun _ -> ex3 := true);
+                ];
+            ]
+        )
+      in
+      run_suite ~fmt suite |> ignore;
+      !ex1 |> should be_false;
+      !ex2 |> should be_true;
+      !ex3 |> should be_true
+    );
+
+    test "Should run all examples inside a focused group - simple effect DSL"
+      (fun _ ->
+         (* This is not explicitly by design. A focused test is returned
+            unfiltered. This test just documents that behaviour. It may change *)
+         let ex1 = ref false in
+         let ex2 = ref false in
+         let suite =
+           parse (fun _ ->
+             context "Group 1" (fun _ -> test "Ex 1" (fun _ -> ex1 := true));
+             context ~focus:true "Group 2" (fun _ ->
+               test "Ex 2" (fun _ -> ex2 := true)
+             )
+           )
+         in
+         run_suite ~fmt suite |> ignore;
+         !ex1 |> should be_false;
+         !ex2 |> should be_true
+    );
+
+    test "Should run all examples inside a focused group - effect DSL" (fun _ ->
+      (* This is not explicitly by design. A focused test is returned
+         unfiltered. This test just documents that behaviour. It may change *)
+      let ex1 = ref false in
+      let ex2 = ref false in
+      let suite =
+        Speed.Dsl.Effect.(
+          parse (fun s ->
+            s.context "Group 1" (fun s -> s.test "Ex 1" (fun _ -> ex1 := true));
+            s.context ~focus:true "Group 2" (fun s ->
+              s.test "Ex 2" (fun _ -> ex2 := true)
+            )
+          )
+        )
+      in
+      run_suite ~fmt suite |> ignore;
+      !ex1 |> should be_false;
+      !ex2 |> should be_true
+    )
   )
 )

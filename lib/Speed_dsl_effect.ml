@@ -13,9 +13,15 @@ struct
   open Domain.MakeFunctions (D)
 
   type 'a builder = {
-    context: ?metadata:metadata list -> string -> ('a builder -> unit) -> unit;
+    context:
+      ?focus:bool ->
+      ?metadata:metadata list ->
+      string ->
+      ('a builder -> unit) ->
+      unit;
     fixture:
       'b.
+      ?focus:bool ->
       ?metadata:metadata list ->
       setup:('a Domain.test_input -> 'b) ->
       string ->
@@ -52,11 +58,11 @@ struct
             );
         }
     in
-    let fixture ?metadata ~setup name specs =
-      perform (Op (add_fixture ?metadata ~name ~setup @@ run specs))
+    let fixture ?focus ?metadata ~setup name specs =
+      perform (Op (add_fixture ?focus ?metadata ~name ~setup @@ run specs))
     in
-    let context ?metadata name specs =
-      perform (Op (add_context ?metadata name (run specs)))
+    let context ?focus ?metadata name specs =
+      perform (Op (add_context ?focus ?metadata name (run specs)))
     in
     let test ?metadata name f = perform (Op (add_example ?metadata name f)) in
 
