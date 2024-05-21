@@ -79,7 +79,7 @@ root_context "Focused tests" (fun _ ->
             ]
         )
       in
-      run_suite suite |> ignore;
+      run_suite ~fmt suite |> ignore;
       !ex1 |> should be_false;
       !ex2 |> should be_true;
       !ex3 |> should be_true;
