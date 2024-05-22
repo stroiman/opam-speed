@@ -93,16 +93,8 @@ module ExampleRunner = struct
     type 'a cont = test_outcome -> 'a cont_result
 
     val return : 'a -> 'a cont_result
-    val to_callback : 'a cont_result -> ('a -> 'a cont_result) -> 'a cont_result
     val run : test_function -> 'a cont -> 'a cont_result
     val wait : 'a cont_result -> 'a
-
-    val join
-      :  ('a -> 'b -> 'c) ->
-      'a cont_result ->
-      'b cont_result ->
-      'c cont_result
-
     val bind : ('a -> 'b cont_result) -> 'a cont_result -> 'b cont_result
     val map : ('a -> 'b) -> 'a cont_result -> 'b cont_result
   end
@@ -114,9 +106,7 @@ module ExampleRunner = struct
 
     let wait x = x
     let return = Fun.id
-    let join x = x
     let bind f x = f x
-    let to_callback x f = f x
     let map f x = f x
 
     let run (f : test_function) cont =
@@ -139,20 +129,10 @@ module ExampleRunner = struct
     type 'a cont = test_outcome -> 'a Lwt.t
     type 'a cont_result = 'a Lwt.t
 
-    let wait x = Lwt_main.run x
+    let wait = Lwt_main.run
     let return = Lwt.return
     let bind f x = Lwt.bind x f
-
-    let join x a b =
-      let%lwt r1 = a in
-      let%lwt r2 = b in
-      Lwt.return @@ x r1 r2
-
-    let map f x = x |> Lwt.map f
-
-    let to_callback x f =
-      let%lwt v = x in
-      f v
+    let map = Lwt.map
 
     let run (f : test_function) cont =
       try%lwt
