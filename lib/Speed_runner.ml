@@ -40,6 +40,11 @@ let split_result r =
 
 let join_result r1 r2 =
   let fmt = r1.fmt in
+  ( match r1.fmt, r2.fmt with
+    | Some _, Some _ -> failwith "Two fmts"
+    | None, Some _ -> failwith "Wronf fmt"
+    | _ -> ()
+  );
   let tmp =
     {
       fmt;
@@ -186,6 +191,10 @@ module Reporter = struct
           else ctx
         in
         ctx )
+
+  let start_example ctx =
+    let ctx, cont_ctx = split_result ctx in
+    ctx, fun ctx -> join_result ctx cont_ctx
 end
 
 module Make
@@ -229,24 +238,8 @@ struct
     | Child { child; setup } -> Child { setup; child= filter_suite child }
     | Context { child } -> Context { child= filter_suite child }
 
-  let start_group name ctx run cont =
-    let ctx, cont_ctx = split_result ctx in
-    let ctx =
-      match name with
-      | None -> ctx
-      | Some n -> ctx |> add_pp (Format.dprintf "@[<v2>@{<bold>•@} %s" n)
-    in
-    run ctx (fun ctx ->
-      let ctx = join_result ctx cont_ctx in
-      let ctx =
-        if Option.is_some name
-        then ctx |> add_pp ~no_break:true (Format.dprintf "@]")
-        else ctx
-      in
-      ctx |> cont
-    )
-
-  let start_example name run cont =
+  let start_example _ctx name run cont =
+    (* let _ctx, _cont_ctx = split_result ctx in *)
     let continue_from_example_result result =
       let outcome =
         match result with
@@ -288,13 +281,13 @@ struct
     | Root f -> f Domain.TestInput.{ metadata; subject= () }
     | Stack (f, g) -> g { metadata; subject= run_setup metadata f }
 
-  let run_ex (example : 'a D.example) metadata setups cont =
+  let run_ex ctx (example : 'a D.example) metadata setups cont =
     let test_input = run_setup (example.metadata @ metadata) setups in
     let run cont =
       Runner.run (fun d -> example.f { d with subject= test_input }) cont
     in
 
-    start_example example.name run cont
+    start_example ctx example.name run cont
 
   let rec run_child_suite
     : type a.
@@ -309,14 +302,26 @@ struct
     let metadata = suite.metadata @ metadata in
     let run_group ctx cont =
       let run_examples ctx =
-        let child_ctx, ctx = split_result ctx in
+        let ctx, cont_ctx = split_result ctx in
+        let _foo = join_result ctx cont_ctx in
+        (* let cont_ctx, r = *)
         suite.examples
         |> List.rev
-        |> List.map (fun ex -> run_ex ex metadata setups Runner.return)
         |> List.fold_left
-             (fun acc a -> Runner.join join_result acc a)
-             (Runner.return child_ctx)
-        |> Runner.bind (fun r -> cont (join_result r ctx))
+             (fun (cont_ctx, prev_result) ex ->
+               let ctx, end_example = Reporter.start_example cont_ctx in
+               ( ctx,
+                 run_ex ctx ex metadata setups (fun ex_result ->
+                   prev_result
+                   |> Runner.map (fun prev_result ->
+                     join_result prev_result (ex_result |> end_example)
+                   )
+                 ) )
+             )
+             (cont_ctx, Runner.return ctx)
+        (* in *)
+        |> fun (cont_ctx, r) ->
+        r |> Runner.bind (fun r -> cont (join_result r cont_ctx))
       in
       let run_child_groups run_examples =
         let rec iter groups ctx =
@@ -338,7 +343,8 @@ struct
       in
       run_child_groups (fun ctx -> run_examples ctx)
     in
-    start_group suite.name ctx run_group cont
+    let ctx, end_group = Reporter.start_group suite.name ctx in
+    run_group ctx (fun ctx -> ctx |> end_group |> cont)
 
   let run_suite ?(fmt = Ocolor_format.raw_std_formatter) ?(filter = false) ~ctx
     s cont
