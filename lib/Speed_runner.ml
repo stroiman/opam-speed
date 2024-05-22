@@ -13,6 +13,9 @@ type suite_result = {
   pp: (Format.formatter -> unit) option;
 }
 
+let get_no_of_executed_examples x =
+  x.no_of_passing_examples + x.no_of_failing_examples
+
 let ( >> ) f g x = g (f x)
 
 type 'a continuation = (suite_result -> 'a) -> 'a
@@ -30,6 +33,10 @@ let empty_suite_result =
   }
 
 let make_result ?fmt () = { empty_suite_result with fmt }
+
+let split_result r =
+  ( { (make_result ?fmt:r.fmt ()) with print_break= r.print_break },
+    { r with fmt= None } )
 
 let join_result r1 r2 =
   let fmt = r1.fmt in
@@ -64,6 +71,11 @@ let join_result r1 r2 =
     { tmp with pp= None; print_break= true }
   | _ -> tmp
 
+let add_pp ?(no_break = false) pp ctx =
+  join_result
+    { ctx with print_break= ctx.print_break && not no_break }
+    { (make_result ()) with pp= Some pp }
+
 module ExampleRunner = struct
   type test_outcome =
     | Success
@@ -72,31 +84,32 @@ module ExampleRunner = struct
 
   module type EXAMPLE_RUNNER = sig
     type test_function
-    type cont_result
-    type cont = test_outcome -> cont_result
+    type 'a cont_result
+    type 'a cont = test_outcome -> 'a cont_result
 
-    val return : suite_result -> cont_result
+    val return : 'a -> 'a cont_result
+    val to_callback : 'a cont_result -> ('a -> 'a cont_result) -> 'a cont_result
+    val run : test_function -> 'a cont -> 'a cont_result
+    val wait : 'a cont_result -> 'a
 
-    val to_callback
-      :  cont_result ->
-      (suite_result -> cont_result) ->
-      cont_result
+    val join
+      :  ('a -> 'a -> 'a) ->
+      'a cont_result ->
+      'a cont_result ->
+      'a cont_result
 
-    val run : test_function -> cont -> cont_result
-    val wait : cont_result -> suite_result
-    val join : cont_result -> cont_result -> cont_result
-    val bind : (suite_result -> cont_result) -> cont_result -> cont_result
-    val map : (suite_result -> suite_result) -> cont_result -> cont_result
+    val bind : ('a -> 'a cont_result) -> 'a cont_result -> 'a cont_result
+    val map : ('a -> 'a) -> 'a cont_result -> 'a cont_result
   end
 
   module SyncRunner = struct
     type test_function = unit Domain.Sync.test_function
-    type cont_result = suite_result
-    type cont = test_outcome -> cont_result
+    type 'a cont_result = 'a
+    type 'a cont = test_outcome -> 'a cont_result
 
     let wait x = x
     let return = Fun.id
-    let join = join_result
+    let join x = x
     let bind f x = f x
     let to_callback x f = f x
     let map f x = f x
@@ -118,17 +131,17 @@ module ExampleRunner = struct
 
   module LwtRunner = struct
     type test_function = unit Domain.test_input -> unit Lwt.t
-    type cont = test_outcome -> suite_result Lwt.t
-    type cont_result = suite_result Lwt.t
+    type 'a cont = test_outcome -> 'a Lwt.t
+    type 'a cont_result = 'a Lwt.t
 
     let wait x = Lwt_main.run x
     let return = Lwt.return
     let bind f x = Lwt.bind x f
 
-    let join a b =
+    let join x a b =
       let%lwt r1 = a in
       let%lwt r2 = b in
-      Lwt.return @@ join_result r1 r2
+      Lwt.return @@ x r1 r2
 
     let map f x = x |> Lwt.map f
 
@@ -156,6 +169,23 @@ module Reporter = struct
   type t = suite_result
 
   let is_success { success; _ } = success
+
+  let start_group name ctx =
+    let ctx, cont_ctx = split_result ctx in
+    let ctx =
+      match name with
+      | None -> ctx
+      | Some n -> ctx |> add_pp (Format.dprintf "@[<v2>@{<bold>•@} %s" n)
+    in
+    ( ctx,
+      fun ctx ->
+        let ctx = join_result ctx cont_ctx in
+        let ctx =
+          if Option.is_some name
+          then ctx |> add_pp ~no_break:true (Format.dprintf "@]")
+          else ctx
+        in
+        ctx )
 end
 
 module Make
@@ -199,17 +229,20 @@ struct
     | Child { child; setup } -> Child { setup; child= filter_suite child }
     | Context { child } -> Context { child= filter_suite child }
 
-  let start_group name print_break_after fmt run cont =
-    ( match name with
-      | None -> ()
-      | Some n -> Format.fprintf fmt "@[<v2>@{<bold>•@} %s@," n
-    );
-    run (fun ctx ->
-      if Option.is_some name
-      then (
-        Format.fprintf fmt "@]";
-        if print_break_after then Format.fprintf fmt "@,"
-      );
+  let start_group name ctx run cont =
+    let ctx, cont_ctx = split_result ctx in
+    let ctx =
+      match name with
+      | None -> ctx
+      | Some n -> ctx |> add_pp (Format.dprintf "@[<v2>@{<bold>•@} %s" n)
+    in
+    run ctx (fun ctx ->
+      let ctx = join_result ctx cont_ctx in
+      let ctx =
+        if Option.is_some name
+        then ctx |> add_pp ~no_break:true (Format.dprintf "@]")
+        else ctx
+      in
       ctx |> cont
     )
 
@@ -266,49 +299,49 @@ struct
   let rec run_child_suite
     : type a.
       Format.formatter ->
-      bool ->
       a D.t ->
+      'result ->
       metadata list ->
       (unit, a) setup_stack ->
       'b continuation
     =
-    fun fmt print_break_after suite metadata setups cont ->
+    fun fmt suite ctx metadata setups cont ->
     let metadata = suite.metadata @ metadata in
-    let run_group cont =
+    let run_group ctx cont =
       let run_examples ctx =
+        let child_ctx, ctx = split_result ctx in
         suite.examples
         |> List.rev
         |> List.map (fun ex -> run_ex ex metadata setups Runner.return)
-        |> List.fold_left (fun acc a -> Runner.join acc a) (Runner.return ctx)
-        |> Runner.bind cont
+        |> List.fold_left
+             (fun acc a -> Runner.join join_result acc a)
+             (Runner.return child_ctx)
+        |> Runner.bind (fun r -> cont (join_result r ctx))
       in
       let run_child_groups run_examples =
-        let _print_break_after = List.length suite.examples > 0 in
         let rec iter groups ctx =
-          let run_child print_break_after child setups cont =
-            let cont c = cont @@ join_result ctx c in
+          let run_child child setups ctx cont =
+            let run_child_suite child setups =
+              run_child_suite fmt child ctx metadata setups cont
+            in
             match child with
             | Child { child; setup } ->
               let setups = Stack (setups, setup) in
-              run_child_suite fmt print_break_after child metadata setups cont
-            | Context { child } ->
-              run_child_suite fmt print_break_after child metadata setups cont
+              run_child_suite child setups
+            | Context { child } -> run_child_suite child setups
           in
           match groups with
           | [] -> run_examples ctx
-          | child :: [] ->
-            run_child _print_break_after child setups run_examples
-          | child :: xs -> run_child true child setups (fun ctx -> iter xs ctx)
+          | child :: xs -> run_child child setups ctx (fun ctx -> iter xs ctx)
         in
-        let empty_result = make_result ~fmt () in
-        iter (List.rev suite.child_groups) empty_result
+        iter (List.rev suite.child_groups) ctx
       in
       run_child_groups (fun ctx -> run_examples ctx)
     in
-    start_group suite.name print_break_after fmt run_group cont
+    start_group suite.name ctx run_group cont
 
-  let run_suite ?(fmt = Ocolor_format.raw_std_formatter) ?(filter = false)
-    ?(ctx = empty_suite_result) s cont
+  let run_suite ?(fmt = Ocolor_format.raw_std_formatter) ?(filter = false) ~ctx
+    s cont
     =
     match s with
     | suite ->
@@ -316,18 +349,21 @@ struct
       let filter = filter || suite.has_focused in
       let suite = if filter then filter_suite s else s in
       let x =
-        run_child_suite fmt false suite []
+        run_child_suite fmt suite ctx []
           (Root (fun _ -> ()))
           (fun result ->
             Format.pp_close_box fmt ();
             Format.pp_print_flush fmt ();
-            cont (join_result ctx result)
+            cont result
           )
       in
       x
 
   let wait = Runner.wait
-  let run_suite_return ?fmt suite = run_suite ?fmt suite Runner.return
+
+  let run_suite_return ?fmt suite =
+    run_suite ?fmt ~ctx:(make_result ?fmt ()) suite Runner.return
+
   let run_suite_wait ?fmt suite = run_suite_return ?fmt suite |> wait
   let is_success { success; _ } = success
   let get_no_of_failing_examples x = x.no_of_failing_examples
@@ -366,13 +402,11 @@ include SyncRunner
 
 let run_suite = run_suite_wait
 
-let run_suites ~fmt sync_suite lwt_suite =
+let run_suites ?(fmt = Ocolor_format.raw_std_formatter) sync_suite lwt_suite =
   let has_focused =
     SyncRunner.has_focused sync_suite || LwtRunner.has_focused lwt_suite
   in
-  let ctx =
-    { empty_suite_result with fmt= Some Ocolor_format.raw_std_formatter }
-  in
+  let ctx = make_result ~fmt () in
   Lwt_main.run
     (let ctx =
        SyncRunner.run_suite ~fmt ~ctx ~filter:has_focused sync_suite Fun.id

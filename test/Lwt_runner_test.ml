@@ -112,7 +112,7 @@ run_root (fun _ ->
       !e3_started |> should ~name:"E3 started" be_true;
       Lwt.wakeup r3 ();
       Format.fprintf fmt "@<10000>%s" "";
-      !s |> should (equal_string "• ctx\n  ");
+      !s |> should (equal_string "• ctx");
       Lwt.wakeup r1 ();
       Format.fprintf fmt "@<10000>%s" "";
       !s |> should (equal_string "• ctx\n  ✔ 1");

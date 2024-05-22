@@ -66,9 +66,10 @@ root_context "Microtask runner" (fun _ ->
       in
       let output = ref "" in
       let fmt = make_ref_string_printer output in
-      run_suite ~fmt suite |> ignore;
+      let result = run_suite ~fmt suite in
       expect !output
-      @@ equal_string "• Grp 1\n  ✔ Ex 1\n• Grp 2\n  ✔ Ex 2\n✔ Ex 3"
+      @@ equal_string "• Grp 1\n  ✔ Ex 1\n• Grp 2\n  ✔ Ex 2\n✔ Ex 3";
+      result |> get_no_of_passing_examples |> should @@ equal_int 3
     )
   )
 )

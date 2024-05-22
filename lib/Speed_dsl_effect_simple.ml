@@ -38,9 +38,10 @@ struct
   let test ?focus name f = Effect.perform (Op (add_example ?focus name f))
   let it = test
 
-  let context name ?focus specs =
+  let context ?focus name specs =
     perform (Op (make_suite ?focus ~name () |> run specs |> add_child_group))
 
+  let focus (t : ?focus:bool -> 'a -> 'b) x = (t ~focus:true) x
   let root_context ?focus name f = run_root (fun _ -> context ?focus name f)
 end
 

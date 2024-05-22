@@ -18,7 +18,7 @@ module Make (T : Domain.DOMAIN) = struct
   let register examples =
     root_suite := !root_suite |> add_child_group (parse examples)
 
-  let root_context name specs = register [context name specs]
+  let root_context ?focus name specs = register [context ?focus name specs]
 end
 
 module Sync = Make (Domain.Sync)
