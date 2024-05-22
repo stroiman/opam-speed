@@ -98,13 +98,13 @@ module ExampleRunner = struct
     val wait : 'a cont_result -> 'a
 
     val join
-      :  ('a -> 'a -> 'a) ->
+      :  ('a -> 'b -> 'c) ->
       'a cont_result ->
-      'a cont_result ->
-      'a cont_result
+      'b cont_result ->
+      'c cont_result
 
-    val bind : ('a -> 'a cont_result) -> 'a cont_result -> 'a cont_result
-    val map : ('a -> 'a) -> 'a cont_result -> 'a cont_result
+    val bind : ('a -> 'b cont_result) -> 'a cont_result -> 'b cont_result
+    val map : ('a -> 'b) -> 'a cont_result -> 'b cont_result
   end
 
   module SyncRunner = struct
@@ -193,8 +193,8 @@ module Reporter = struct
         ctx )
 
   let start_example ctx =
-    let ctx, cont_ctx = split_result ctx in
-    ctx, fun ctx -> join_result ctx cont_ctx
+    let ex_ctx, cont_ctx = split_result ctx in
+    cont_ctx, fun ctx -> join_result ex_ctx ctx
 end
 
 module Make
@@ -301,27 +301,33 @@ struct
     fun fmt suite ctx metadata setups cont ->
     let metadata = suite.metadata @ metadata in
     let run_group ctx cont =
-      let run_examples ctx =
-        let ctx, cont_ctx = split_result ctx in
-        let _foo = join_result ctx cont_ctx in
-        (* let cont_ctx, r = *)
-        suite.examples
-        |> List.rev
-        |> List.fold_left
-             (fun (cont_ctx, prev_result) ex ->
-               let ctx, end_example = Reporter.start_example cont_ctx in
-               ( ctx,
-                 run_ex ctx ex metadata setups (fun ex_result ->
-                   prev_result
-                   |> Runner.map (fun prev_result ->
-                     join_result prev_result (ex_result |> end_example)
-                   )
-                 ) )
-             )
-             (cont_ctx, Runner.return ctx)
-        (* in *)
-        |> fun (cont_ctx, r) ->
-        r |> Runner.bind (fun r -> cont (join_result r cont_ctx))
+      let run_examples ctx cont =
+        let cont_ctx, r =
+          suite.examples
+          |> List.rev
+          |> List.fold_left
+               (fun (cont_ctx, prev_result) ex ->
+                 let ctx, end_example = Reporter.start_example cont_ctx in
+                 ( ctx,
+                   run_ex ctx ex metadata setups (fun ex_result ->
+                     let this_result = ex_result |> end_example in
+                     prev_result
+                     |> Runner.map (function
+                       | Some prev_result ->
+                         Some (join_result prev_result this_result)
+                       | None -> Some this_result
+                       )
+                   ) )
+               )
+               (ctx, Runner.return None)
+        in
+        r
+        |> Runner.map (fun r ->
+          match r with
+          | Some r -> join_result r cont_ctx
+          | None -> cont_ctx
+        )
+        |> Runner.bind cont
       in
       let run_child_groups run_examples =
         let rec iter groups ctx =
@@ -341,7 +347,7 @@ struct
         in
         iter (List.rev suite.child_groups) ctx
       in
-      run_child_groups (fun ctx -> run_examples ctx)
+      run_child_groups (fun ctx -> run_examples ctx (fun ctx -> cont ctx))
     in
     let ctx, end_group = Reporter.start_group suite.name ctx in
     run_group ctx (fun ctx -> ctx |> end_group |> cont)
