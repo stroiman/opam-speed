@@ -95,7 +95,7 @@ module ExampleRunner = struct
     type 'a cont = test_outcome -> 'a cont_result
 
     val return : 'a -> 'a cont_result
-    val run : test_function -> 'a cont -> 'a cont_result
+    val run : test_function -> test_outcome cont_result
     val wait : 'a cont_result -> 'a
     val bind : ('a -> 'b cont_result) -> 'a cont_result -> 'b cont_result
     val map : ('a -> 'b) -> 'a cont_result -> 'b cont_result
@@ -111,18 +111,16 @@ module ExampleRunner = struct
     let bind f x = f x
     let map f x = f x
 
-    let run (f : test_function) cont =
+    let run (f : test_function) =
       try
         f { metadata= []; subject= () };
-        cont Success
+        Success
       with e ->
         ( match e with
-          | Assertions.FormattedAssertionError pp -> cont (FailureWithFormat pp)
+          | Assertions.FormattedAssertionError pp -> FailureWithFormat pp
           | exn ->
-            cont
-              (FailureWithFormat
-                 (Format.dprintf "@{<orange>%s@}" (Printexc.to_string exn))
-              )
+            FailureWithFormat
+              (Format.dprintf "@{<orange>%s@}" (Printexc.to_string exn))
         )
   end
 
@@ -136,21 +134,45 @@ module ExampleRunner = struct
     let bind f x = Lwt.bind x f
     let map = Lwt.map
 
-    let run (f : test_function) cont =
+    let run (f : test_function) =
       try%lwt
         let%lwt _ = f { metadata= []; subject= () } in
-        cont Success
+        Lwt.return Success
       with e ->
         ( match e with
-          | Assertions.FormattedAssertionError pp -> cont (FailureWithFormat pp)
+          | Assertions.FormattedAssertionError pp ->
+            Lwt.return (FailureWithFormat pp)
           | exn ->
-            cont
+            Lwt.return
               (FailureWithFormat (Format.dprintf "%s" (Printexc.to_string exn)))
         )
   end
 end
 
 open ExampleRunner
+
+let convert_test_result_to_suite_result name result =
+  match result with
+  | Success ->
+    {
+      empty_suite_result with
+      no_of_passing_examples= empty_suite_result.no_of_passing_examples + 1;
+      pp= Some (Format.dprintf "@{<green>✔@} %s" name);
+    }
+  | Failure ->
+    {
+      empty_suite_result with
+      success= false;
+      no_of_failing_examples= empty_suite_result.no_of_failing_examples + 1;
+      pp= Some (Format.dprintf "@{<red>✘@} %s" name);
+    }
+  | FailureWithFormat pp ->
+    {
+      empty_suite_result with
+      success= false;
+      no_of_failing_examples= empty_suite_result.no_of_failing_examples + 1;
+      pp= Some (Format.dprintf "@{<red>✘@} %s@,%t" name pp);
+    }
 
 module Reporter = struct
   type t = suite_result
@@ -174,10 +196,13 @@ module Reporter = struct
         in
         ctx )
 
-  let start_example ctx =
+  let start_example name ctx =
     let ex_ctx, cont_ctx = split_result ctx in
     ( cont_ctx,
-      fun ex_result ctx -> join_result (join_result ex_ctx ex_result) ctx )
+      fun result ctx ->
+        (* let ex_result = result in *)
+        let ex_result = convert_test_result_to_suite_result name result in
+        join_result (join_result ex_ctx ex_result) ctx )
 end
 
 module Make
@@ -221,50 +246,21 @@ struct
     | Child { child; setup } -> Child { setup; child= filter_suite child }
     | Context { child } -> Context { child= filter_suite child }
 
-  let start_example _ctx name run cont =
-    let continue_from_example_result result =
-      let outcome =
-        match result with
-        | Success ->
-          {
-            empty_suite_result with
-            no_of_passing_examples=
-              empty_suite_result.no_of_passing_examples + 1;
-            pp= Some (Format.dprintf "@{<green>✔@} %s" name);
-          }
-        | Failure ->
-          {
-            empty_suite_result with
-            success= false;
-            no_of_failing_examples=
-              empty_suite_result.no_of_failing_examples + 1;
-            pp= Some (Format.dprintf "@{<red>✘@} %s" name);
-          }
-        | FailureWithFormat pp ->
-          {
-            empty_suite_result with
-            success= false;
-            no_of_failing_examples=
-              empty_suite_result.no_of_failing_examples + 1;
-            pp= Some (Format.dprintf "@{<red>✘@} %s@,%t" name pp);
-          }
-      in
-      cont outcome
-    in
-    run continue_from_example_result
-
   let rec run_setup : 'b. metadata list -> (unit, 'b) setup_stack -> 'b =
     fun metadata -> function
     | Root f -> f Domain.TestInput.{ metadata; subject= () }
     | Stack (f, g) -> g { metadata; subject= run_setup metadata f }
 
-  let run_ex ctx (example : 'a D.example) metadata setups cont =
+  let run_ex metadata setups ctx (example : 'a D.example) =
+    let ctx, end_example = Reporter.start_example example.name ctx in
     let test_input = run_setup (example.metadata @ metadata) setups in
-    let run cont =
-      Runner.run (fun d -> example.f { d with subject= test_input }) cont
+    let outcome =
+      Runner.run (fun d -> example.f { d with subject= test_input })
     in
-
-    start_example ctx example.name run cont
+    let cont ctx =
+      outcome |> Runner.map (fun outcome -> end_example outcome ctx)
+    in
+    ctx, cont
 
   let rec run_child_suite
     : type a.
@@ -277,47 +273,34 @@ struct
     fun suite ctx metadata setups cont ->
     let metadata = suite.metadata @ metadata in
     let run_group ctx cont =
-      let run_examples ctx cont =
-        let cont_ctx, l =
+      let run_examples cont ctx =
+        let cont_ctx, test_outcomes =
           suite.examples
           |> List.rev
-          |> List.fold_left_map
-               (fun cont_ctx ex ->
-                 let ctx, end_example = Reporter.start_example cont_ctx in
-                 let tmp = run_ex ctx ex metadata setups Runner.return in
-                 let result ctx =
-                   tmp |> Runner.map (fun ex_ctx -> end_example ex_ctx ctx)
-                 in
-                 (* let result = tmp (fun ex_result -> Runner.return ex_result) in *)
-                 ctx, result
-               )
-               ctx
+          |> List.fold_left_map (run_ex metadata setups) ctx
         in
-        l
-        |> List.fold_left
-             (fun acc result -> acc |> Runner.bind result)
-             (Runner.return cont_ctx)
+        List.fold_left
+          (fun acc result -> acc |> Runner.bind result)
+          (Runner.return cont_ctx) test_outcomes
         |> Runner.bind cont
       in
-      let run_child_groups run_examples =
+      let run_child_groups_and_then run_examples =
         let rec iter groups ctx =
-          let run_child child setups ctx cont =
-            let run_child_suite child setups =
-              run_child_suite child ctx metadata setups cont
-            in
+          let run_child child cont =
             match child with
             | Child { child; setup } ->
               let setups = Stack (setups, setup) in
-              run_child_suite child setups
-            | Context { child } -> run_child_suite child setups
+              run_child_suite child ctx metadata setups cont
+            | Context { child } ->
+              run_child_suite child ctx metadata setups cont
           in
           match groups with
           | [] -> run_examples ctx
-          | child :: xs -> run_child child setups ctx (fun ctx -> iter xs ctx)
+          | child :: xs -> run_child child (iter xs)
         in
         iter (List.rev suite.child_groups) ctx
       in
-      run_child_groups (fun ctx -> run_examples ctx (fun ctx -> cont ctx))
+      run_child_groups_and_then (run_examples cont)
     in
     let ctx, end_group = Reporter.start_group suite.name ctx in
     run_group ctx (fun ctx -> ctx |> end_group |> cont)
