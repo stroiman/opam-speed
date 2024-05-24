@@ -4,11 +4,23 @@ module Runner = Speed_runner
 module Metadata = Speed_metadata
 
 module Dsl = struct
-  module List = Speed_dsl_list
+  module Helpers = struct
+    let focus (t : ?focus:bool -> 'a) x = (t ~focus:true) x
+  end
+
+  module List = struct
+    include Speed_dsl_list
+    include Helpers
+  end
 
   module Effect = struct
     include Speed_dsl_effect
-    module Simple = Speed_dsl_effect_simple
+    include Helpers
+
+    module Simple = struct
+      include Speed_dsl_effect_simple
+      include Helpers
+    end
   end
 end
 

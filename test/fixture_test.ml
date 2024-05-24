@@ -125,8 +125,7 @@ root_context "Fixture" (fun _ ->
     )
     |> run_suite_silent
     |> ignore;
-    !actual |> should @@ equal_int 123;
-    ()
+    !actual |> should @@ equal_int 123
   );
 
   test "It uses metadata from example when there's a conflict" (fun _ ->
@@ -149,8 +148,7 @@ root_context "Fixture" (fun _ ->
     )
     |> run_suite_silent
     |> ignore;
-    !actual |> should @@ equal_int 123;
-    ()
+    !actual |> should @@ equal_int 123
   );
 
   test "It uses value from innermost group when there's a conflict" (fun _ ->

@@ -41,7 +41,6 @@ struct
   let context ?focus name specs =
     perform (Op (make_suite ?focus ~name () |> run specs |> add_child_group))
 
-  let focus (t : ?focus:bool -> 'a -> 'b) x = (t ~focus:true) x
   let root_context ?focus name f = run_root (fun _ -> context ?focus name f)
 end
 
