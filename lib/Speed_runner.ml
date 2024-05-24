@@ -151,31 +151,31 @@ end
 
 open ExampleRunner
 
-let convert_test_result_to_suite_result name result =
-  match result with
-  | Success ->
-    {
-      empty_suite_result with
-      no_of_passing_examples= empty_suite_result.no_of_passing_examples + 1;
-      pp= Some (Format.dprintf "@{<green>✔@} %s" name);
-    }
-  | Failure ->
-    {
-      empty_suite_result with
-      success= false;
-      no_of_failing_examples= empty_suite_result.no_of_failing_examples + 1;
-      pp= Some (Format.dprintf "@{<red>✘@} %s" name);
-    }
-  | FailureWithFormat pp ->
-    {
-      empty_suite_result with
-      success= false;
-      no_of_failing_examples= empty_suite_result.no_of_failing_examples + 1;
-      pp= Some (Format.dprintf "@{<red>✘@} %s@,%t" name pp);
-    }
-
 module Reporter = struct
   type t = suite_result
+
+  let convert_test_result_to_suite_result name result =
+    match result with
+    | Success ->
+      {
+        empty_suite_result with
+        no_of_passing_examples= empty_suite_result.no_of_passing_examples + 1;
+        pp= Some (Format.dprintf "@{<green>✔@} %s" name);
+      }
+    | Failure ->
+      {
+        empty_suite_result with
+        success= false;
+        no_of_failing_examples= empty_suite_result.no_of_failing_examples + 1;
+        pp= Some (Format.dprintf "@{<red>✘@} %s" name);
+      }
+    | FailureWithFormat pp ->
+      {
+        empty_suite_result with
+        success= false;
+        no_of_failing_examples= empty_suite_result.no_of_failing_examples + 1;
+        pp= Some (Format.dprintf "@{<red>✘@} %s@,%t" name pp);
+      }
 
   let is_success { success; _ } = success
 
