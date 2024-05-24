@@ -40,7 +40,6 @@ let split_result r =
 
 let join_result r1 r2 =
   let fmt =
-    (* r1.fmt in *)
     match r1.fmt, r2.fmt with
     | Some _, Some _ -> failwith "Two fmts"
     | None, Some x -> Some x
@@ -89,19 +88,23 @@ module ExampleRunner = struct
     | FailureWithFormat of (Format.formatter -> unit)
 
   module type EXAMPLE_RUNNER = sig
-    type test_function
+    type 'a test_function
     type 'a cont_result
-    type 'a cont = test_outcome -> 'a cont_result
 
     val return : 'a -> 'a cont_result
-    val run : test_function -> test_outcome cont_result
+
+    val run
+      :  'a test_function ->
+      'a Domain.test_input ->
+      test_outcome cont_result
+
     val wait : 'a cont_result -> 'a
     val bind : ('a -> 'b cont_result) -> 'a cont_result -> 'b cont_result
     val map : ('a -> 'b) -> 'a cont_result -> 'b cont_result
   end
 
   module SyncRunner = struct
-    type test_function = unit Domain.Sync.test_function
+    type 'a test_function = 'a Domain.Sync.test_function
     type 'a cont_result = 'a
     type 'a cont = test_outcome -> 'a cont_result
 
@@ -110,9 +113,9 @@ module ExampleRunner = struct
     let bind f x = f x
     let map f x = f x
 
-    let run (f : test_function) =
+    let run f input =
       try
-        f { metadata= []; subject= () };
+        f input;
         Success
       with e ->
         ( match e with
@@ -124,7 +127,7 @@ module ExampleRunner = struct
   end
 
   module LwtRunner = struct
-    type test_function = unit Domain.test_input -> unit Lwt.t
+    type 'a test_function = 'a Domain.LwtDomain.test_function
     type 'a cont = test_outcome -> 'a Lwt.t
     type 'a cont_result = 'a Lwt.t
 
@@ -133,9 +136,9 @@ module ExampleRunner = struct
     let bind f x = Lwt.bind x f
     let map = Lwt.map
 
-    let run (f : test_function) =
+    let run f input =
       try%lwt
-        let%lwt _ = f { metadata= []; subject= () } in
+        let%lwt _ = f input in
         Lwt.return Success
       with e ->
         ( match e with
@@ -189,9 +192,12 @@ end
 module Make
     (D : Domain.DOMAIN)
     (Runner : ExampleRunner.EXAMPLE_RUNNER
-              with type test_function = unit D.test_function) =
+              with type 'a test_function = 'a D.test_function) =
 struct
   open D
+
+  let ( >>= ) x f = Runner.bind f x
+  let ( >|= ) x f = Runner.map f x
 
   type ('a, 'b) setup_stack =
     | Root : (unit Domain.test_input -> 'a) -> (unit, 'a) setup_stack
@@ -234,13 +240,10 @@ struct
 
   let run_ex metadata setups ctx (example : 'a D.example) =
     let ctx, end_example = Reporter.start_example example.name ctx in
-    let test_input = run_setup (example.metadata @ metadata) setups in
-    let outcome =
-      Runner.run (fun d -> example.f { d with subject= test_input })
-    in
-    let cont ctx =
-      outcome |> Runner.map (fun outcome -> end_example outcome ctx)
-    in
+    let metadata = example.metadata @ metadata in
+    let test_input = run_setup metadata setups in
+    let outcome = Runner.run example.f { subject= test_input; metadata } in
+    let cont ctx = outcome >|= fun o -> end_example o ctx in
     ctx, cont
 
   let rec run_child_suite
@@ -261,9 +264,9 @@ struct
           |> List.fold_left_map (run_ex metadata setups) ctx
         in
         List.fold_left
-          (fun acc result -> acc |> Runner.bind result)
+          (fun acc result -> acc >>= result)
           (Runner.return cont_ctx) test_outcomes
-        |> Runner.bind cont
+        >>= cont
       in
       let run_child_groups_and_then run_examples =
         let rec iter groups ctx =
