@@ -153,48 +153,37 @@ open ExampleRunner
 module Reporter = struct
   type t = suite_result
 
-  let convert_test_result_to_suite_result name result =
+  let add_test_outcom ctx name result =
     match result with
     | Success ->
-      {
-        empty_suite_result with
-        no_of_passing_examples= empty_suite_result.no_of_passing_examples + 1;
-        pp= Some (Format.dprintf "@{<green>✔@} %s" name);
-      }
+      { ctx with no_of_passing_examples= ctx.no_of_passing_examples + 1 }
+      |> add_pp (Format.dprintf "@{<green>✔@} %s" name)
     | FailureWithFormat pp ->
       {
-        empty_suite_result with
+        ctx with
         success= false;
-        no_of_failing_examples= empty_suite_result.no_of_failing_examples + 1;
-        pp= Some (Format.dprintf "@{<red>✘@} %s@,%t" name pp);
+        no_of_failing_examples= ctx.no_of_failing_examples + 1;
       }
+      |> add_pp (Format.dprintf "@{<red>✘@} %s@,%t" name pp)
 
   let is_success { success; _ } = success
 
   let start_group name ctx =
     let ctx, cont_ctx = split_result ctx in
-    let ctx =
-      match name with
-      | None -> ctx
-      | Some n -> ctx |> add_pp (Format.dprintf "@[<v2>@{<bold>•@} %s" n)
+    let ctx = ctx |> add_pp (Format.dprintf "@[<v2>@{<bold>•@} %s" name) in
+    let end_group ctx =
+      let ctx = join_result ctx cont_ctx in
+      ctx |> add_pp ~no_break:true (Format.dprintf "@]")
     in
-    ( ctx,
-      fun ctx ->
-        let ctx = join_result ctx cont_ctx in
-        let ctx =
-          if Option.is_some name
-          then ctx |> add_pp ~no_break:true (Format.dprintf "@]")
-          else ctx
-        in
-        ctx )
+    ctx, end_group
 
   let start_example name ctx =
     let ex_ctx, cont_ctx = split_result ctx in
-    ( cont_ctx,
-      fun result ctx ->
-        (* let ex_result = result in *)
-        let ex_result = convert_test_result_to_suite_result name result in
-        join_result (join_result ex_ctx ex_result) ctx )
+    let end_example result ctx =
+      let ex_result = add_test_outcom ex_ctx name result in
+      join_result ex_result ctx
+    in
+    cont_ctx, end_example
 end
 
 module Make
@@ -294,8 +283,11 @@ struct
       in
       run_child_groups_and_then (run_examples cont)
     in
-    let ctx, end_group = Reporter.start_group suite.name ctx in
-    run_group ctx (fun ctx -> ctx |> end_group |> cont)
+    match suite.name with
+    | Some name ->
+      let ctx, end_group = Reporter.start_group name ctx in
+      run_group ctx (fun ctx -> ctx |> end_group |> cont)
+    | None -> run_group ctx cont
 
   let run_suite ?(fmt = Ocolor_format.raw_std_formatter) ?(filter = false) ~ctx
     s cont
