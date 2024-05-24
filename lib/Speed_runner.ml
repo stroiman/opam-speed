@@ -246,12 +246,7 @@ struct
             success= false;
             no_of_failing_examples=
               empty_suite_result.no_of_failing_examples + 1;
-            pp=
-              Some
-                (fun fmt ->
-                  Format.fprintf fmt "@{<red>✘@} %s" name;
-                  Format.fprintf fmt "@,%t" pp
-                );
+            pp= Some (Format.dprintf "@{<red>✘@} %s@,%t" name pp);
           }
       in
       cont outcome
@@ -273,14 +268,13 @@ struct
 
   let rec run_child_suite
     : type a.
-      Format.formatter ->
       a D.t ->
       'result ->
       metadata list ->
       (unit, a) setup_stack ->
       'b continuation
     =
-    fun fmt suite ctx metadata setups cont ->
+    fun suite ctx metadata setups cont ->
     let metadata = suite.metadata @ metadata in
     let run_group ctx cont =
       let run_examples ctx cont =
@@ -309,7 +303,7 @@ struct
         let rec iter groups ctx =
           let run_child child setups ctx cont =
             let run_child_suite child setups =
-              run_child_suite fmt child ctx metadata setups cont
+              run_child_suite child ctx metadata setups cont
             in
             match child with
             | Child { child; setup } ->
@@ -337,7 +331,7 @@ struct
       let filter = filter || suite.has_focused in
       let suite = if filter then filter_suite s else s in
       let x =
-        run_child_suite fmt suite ctx []
+        run_child_suite suite ctx []
           (Root (fun _ -> ()))
           (fun result ->
             Format.pp_close_box fmt ();
