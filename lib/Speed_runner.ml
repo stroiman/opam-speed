@@ -39,16 +39,18 @@ let split_result r =
     { r with fmt= None } )
 
 let join_result r1 r2 =
-  let fmt = r1.fmt in
-  ( match r1.fmt, r2.fmt with
+  let fmt =
+    (* r1.fmt in *)
+    match r1.fmt, r2.fmt with
     | Some _, Some _ -> failwith "Two fmts"
-    | None, Some _ -> failwith "Wronf fmt"
-    | _ -> ()
-  );
+    | None, Some x -> Some x
+    | Some x, None -> Some x
+    | None, None -> None
+  in
   let tmp =
     {
       fmt;
-      print_break= r1.print_break;
+      print_break= r1.print_break || r2.print_break;
       success= r1.success && r2.success;
       no_of_failing_examples=
         r1.no_of_failing_examples + r2.no_of_failing_examples;
@@ -174,7 +176,8 @@ module Reporter = struct
 
   let start_example ctx =
     let ex_ctx, cont_ctx = split_result ctx in
-    cont_ctx, fun ctx -> join_result ex_ctx ctx
+    ( cont_ctx,
+      fun ex_result ctx -> join_result (join_result ex_ctx ex_result) ctx )
 end
 
 module Make
@@ -219,7 +222,6 @@ struct
     | Context { child } -> Context { child= filter_suite child }
 
   let start_example _ctx name run cont =
-    (* let _ctx, _cont_ctx = split_result ctx in *)
     let continue_from_example_result result =
       let outcome =
         match result with
@@ -282,31 +284,25 @@ struct
     let metadata = suite.metadata @ metadata in
     let run_group ctx cont =
       let run_examples ctx cont =
-        let cont_ctx, r =
+        let cont_ctx, l =
           suite.examples
           |> List.rev
-          |> List.fold_left
-               (fun (cont_ctx, prev_result) ex ->
+          |> List.fold_left_map
+               (fun cont_ctx ex ->
                  let ctx, end_example = Reporter.start_example cont_ctx in
-                 ( ctx,
-                   run_ex ctx ex metadata setups (fun ex_result ->
-                     let this_result = ex_result |> end_example in
-                     prev_result
-                     |> Runner.map (function
-                       | Some prev_result ->
-                         Some (join_result prev_result this_result)
-                       | None -> Some this_result
-                       )
-                   ) )
+                 let tmp = run_ex ctx ex metadata setups Runner.return in
+                 let result ctx =
+                   tmp |> Runner.map (fun ex_ctx -> end_example ex_ctx ctx)
+                 in
+                 (* let result = tmp (fun ex_result -> Runner.return ex_result) in *)
+                 ctx, result
                )
-               (ctx, Runner.return None)
+               ctx
         in
-        r
-        |> Runner.map (fun r ->
-          match r with
-          | Some r -> join_result r cont_ctx
-          | None -> cont_ctx
-        )
+        l
+        |> List.fold_left
+             (fun acc result -> acc |> Runner.bind result)
+             (Runner.return cont_ctx)
         |> Runner.bind cont
       in
       let run_child_groups run_examples =
