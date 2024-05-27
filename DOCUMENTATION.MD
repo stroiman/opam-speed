@@ -507,7 +507,6 @@ root_suite "Metadata test" (fun s ->
 ```
 
 ### Motivating Examples
-
 Th
 
 ```ocaml
@@ -523,16 +522,17 @@ root_context "POST /registration" (fun s ->
         ~body ()
     )
     (fun s ->
-      s.context ~metadata:[Body "email=john.doe%40example.com"] "Email is valid" (fun s ->
-        s.test "Should generate a status 200" (fun { subject; _ } ->
-          subject |> should @@ have_status 200
-        );
+      s.context ~metadata:[Body "email=john.doe%40example.com"] "Email is valid" 
+        (fun s ->
+          s.test "Should generate a status 200" (fun { subject; _ } ->
+            subject |> should @@ have_status 200
+          );
 
-        s.test "Should return a 'please check your email' reply" (fun { subject; _ } ->
-          let+ body = subject >>= Dream.body in
-          body |> should @@ contain "Please check your email"
-        )
-      );
+          s.test "Should return a 'please check your email' reply" (fun { subject; _ } ->
+            let+ body = subject >>= Dream.body in
+            body |> should @@ contain "Please check your email"
+          )
+        );
 
       s.context ~metadata:[Body "email=jane.doe%40example.com"] "Email is a duplicate"
         (fun s ->
@@ -545,18 +545,30 @@ root_context "POST /registration" (fun s ->
              let+ body = subject >>= Dream.body in
              body |> should @@ contain "duplicate"
            )
-      );
+        );
 
-      s.context ~metadata:[Body "email=invalid"] "Email is not a valid email" (fun s ->
-        (* ... *)
-      );
+      s.context ~metadata:[Body "email=invalid"] "Email is not a valid email" 
+        (fun s ->
+          (* ... *)
+        );
 
-      s.context ~metadata:[Body "bad_name=jd%40example.com"] "Body does not contain an email" (fun s ->
-        (* ... *)
-      )
+      s.context ~metadata:[Body "bad_name=jd%40example.com"] "Body does not contain an email" 
+        (fun s ->
+          (* ... *)
+        )
     )
 )
 ```
 
-> [!NOTE]
-> 
+I would like to find a better DSL for specifying metadata. An alternate version
+exists with the `with_metadata` helper, that allows you to place the metadata
+before the test/context, but currently ocamlformat brings everything together on
+one line.
+
+```ocaml
+with_metadata [IntValue 1] s.fixture fun s ->
+  with_metadata [IntValue 2] s.test "Test" (fun { subject; _ } ->
+    (* ... *)
+  )
+)
+```

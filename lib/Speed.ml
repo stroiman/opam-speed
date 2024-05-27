@@ -6,6 +6,9 @@ module Metadata = Speed_metadata
 module Dsl = struct
   module Helpers = struct
     let focus (t : ?focus:bool -> 'a) x = (t ~focus:true) x
+
+    let with_metadata metadata (t : ?metadata:Domain.Metadata.t list -> 'a) x =
+      (t ~metadata) x
   end
 
   module List = struct

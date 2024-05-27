@@ -184,7 +184,7 @@ root_context "Fixture" (fun _ ->
         parse (fun s ->
           s.context "root" (fun s ->
             s.fixture "child" ~setup:[%mx IntValue 42] (fun s ->
-              s.test ~metadata:[IntValue 123] "Test" (fun { subject; _ } ->
+              with_metadata [IntValue 123] s.test "Test" (fun { subject; _ } ->
                 actual := subject
               )
             )
