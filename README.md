@@ -2,7 +2,7 @@
 
 **Type safe test library for OCaml!**
 
-![image showing code completion)(./type-safe.png)
+![image showing code completion](./type-safe.png)
 
 Feeling brave, and want to try this out, [read the
 documentation](./DOCUMENTATION.MD)
