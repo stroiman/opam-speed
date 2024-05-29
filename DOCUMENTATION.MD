@@ -159,9 +159,8 @@ root_context "Scope" (fun s ->
 > Committing focus'ed tests to CI can lead to bugs appear in code that was
 > otherwise covered by tests (which I have actually experienced). To prevent 
 > that, a test tool should support the option of failing in the precense of
-> focused tests for CI builds. Speed does not yet support this yet (neither did
-> the tool we used back then despite that should have been a much more mature 
-> tool).
+> focused tests for CI builds. Speed does not yet support this (neither did the
+> tool we used back then despite that should have been a much more mature tool).
 
 ## Root suite
 
