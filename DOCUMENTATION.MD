@@ -563,7 +563,7 @@ root_context "POST /registration" (fun s ->
 I would like to find a better DSL for specifying metadata. An alternate version
 exists with the `with_metadata` helper, that allows you to place the metadata
 before the test/context, but currently ocamlformat brings everything together on
-one line.
+one line, not giving the separation I'd like.
 
 ```ocaml
 with_metadata [IntValue 1] s.fixture fun s ->
