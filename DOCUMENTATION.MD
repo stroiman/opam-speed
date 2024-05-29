@@ -85,6 +85,7 @@ let suite = parser build_suite
 A variation exists of the Effect DSL that has a slightly lighter syntax, but 
 this does not allow for all features to work.
 
+```ocaml
 open Speed.Dsl.Effect.Light
 ;;
 
@@ -101,6 +102,7 @@ root_context "Context" (fun _ ->
     (* ... *) 
   )
 )
+```
 
 ### Testing async code
 
@@ -163,7 +165,7 @@ root_context "Scope" (fun s ->
 
 ## Root suite
 
-The `root_context` call is the only _mutating_ line of code in speed. It parses
+The `root_context` call is the only _mutating_ line of code in Speed. It parses
 the inner function and adds the generated suite to a special `root stuite`. You
 can instead use a function `parse`, that returns the generated suite, letting
 yourself build the root suite.
